@@ -1,1 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
 
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0,
+        maximum-scale=1.0, user-scalable=no"
+    >
+
+    <title>Zombie Survival | POTARA GAMES</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div id="gameContainer">
+
+        <canvas id="gameCanvas"></canvas>
+
+        <div class="top-bar">
+
+            <a href="../../index.html" class="back-button">
+                ← POTARA GAMES
+            </a>
+
+            <button id="pauseButton">
+                ⏸
+            </button>
+
+        </div>
+
+        <div class="game-ui">
+
+            <div class="health-container">
+                <p>❤️ HEALTH</p>
+
+                <div class="health-bar">
+                    <div id="healthFill"></div>
+                </div>
+
+                <span id="healthText">100 / 100</span>
+            </div>
+
+            <div class="stats">
+                <div>
+                    🧟 Kills:
+                    <strong id="killsText">0</strong>
+                </div>
+
+                <div>
+                    ⭐ Score:
+                    <strong id="scoreText">0</strong>
+                </div>
+
+                <div>
+                    🌊 Wave:
+                    <strong id="waveText">1</strong>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="start-screen" id="startScreen">
+
+            <div class="screen-box">
+
+                <p class="mini-title">POTARA GAMES PRESENTS</p>
+
+                <h1>ZOMBIE<br><span>SURVIVAL</span></h1>
+
+                <p>
+                    Survive against endless zombie waves!
+                </p>
+
+                <div class="controls-info">
+                    <p>💻 PC: WASD / Arrow Keys</p>
+                    <p>🔫 Shoot: Mouse Click / Space</p>
+                    <p>📱 Mobile: Joystick + Shoot Button</p>
+                </div>
+
+                <button id="startButton">
+                    ▶ START GAME
+                </button>
+
+            </div>
+
+        </div>
+
+        <div class="game-over-screen" id="gameOverScreen">
+
+            <div class="screen-box">
+
+                <p class="mini-title">MISSION FAILED</p>
+
+                <h2>GAME OVER</h2>
+
+                <p>
+                    Zombies defeated you!
+                </p>
+
+                <div class="final-stats">
+                    <p>
+                        Score:
+                        <strong id="finalScore">0</strong>
+                    </p>
+
+                    <p>
+                        Kills:
+                        <strong id="finalKills">0</strong>
+                    </p>
+                </div>
+
+                <button id="restartButton">
+                    🔄 PLAY AGAIN
+                </button>
+
+                <a href="../../index.html" class="home-link">
+                    ← Back to POTARA GAMES
+                </a>
+
+            </div>
+
+        </div>
+
+        <div class="pause-screen" id="pauseScreen">
+
+            <div class="screen-box">
+
+                <h2>PAUSED</h2>
+
+                <button id="resumeButton">
+                    ▶ RESUME
+                </button>
+
+            </div>
+
+        </div>
+
+        <!-- Mobile Controls -->
+
+        <div class="mobile-controls">
+
+            <div class="joystick-area" id="joystickArea">
+                <div class="joystick-base">
+                    <div
+                        class="joystick-stick"
+                        id="joystickStick"
+                    ></div>
+                </div>
+            </div>
+
+            <button id="shootButton">
+                🔫
+                <span>SHOOT</span>
+            </button>
+
+        </div>
+
+    </div>
+
+    <script src="script.js"></script>
+
+</body>
+</html>
