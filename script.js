@@ -262,9 +262,14 @@ playButtons.forEach(function (button) {
     button.addEventListener("click", function () {
         const gameName = button.dataset.game;
 
+        if (gameName === "Zombie Survival") {
+            window.location.href =
+                "games/zombie-survival/";
+            return;
+        }
+
         showNotification(
-            gameName +
-            " is coming soon! 🎮🔥"
+            gameName + " is coming soon! 🎮🔥"
         );
     });
 });
