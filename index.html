@@ -1,115 +1,719 @@
 <!DOCTYPE html>
-<HTml>
-  <head>
-    <title>MY ULTIMATE ANIME PROFILE</title>
-    <link rel="stylesheet" href="">
-    <style>
-      body{
-        background-color: black;
-        text-align: center;
-        font-family: Arial;
-      }
-      button{
-        background-color: red;
-        width: 180px;
-        height: 70px;
-        font-size: 20px;
-        cursor: pointer;
-        transition: 0.3s;
-        border: 5px solid orange;
-        border-radius: 20px;
-        color: white;
-      }
-      button:hover{
-        background-color: lime;
-        transform: scale(1.1);
-        color: black
-      }
-      img{
-        border: 5px solid gold;
-        border-radius: 25px;
-        cursor: pointer;
-        transition: 0.3s;
-      }
-      img:hover{
-        transform: scale(1.1);
-        border: 5px solid lime;
-      }
-      h1{
-        color: orange;
-      }
-      ol{
-        color: white;
-      }
-      tr:hover{
-        background-color: grey;
-      }
-      th{
-        background-color: purple;
-      }
-      th, td{
-        padding: 15px;
-      } 
-      table{
-        margin: auto;
-        border: 3px solid;
-      }
-      h2{
-        color: gold;
-      }
-      h3{
-        color: white;
-      }
-      #nextbutton{
-        background-color: royalblue;
-      }
-    </style>
-    <body>
-      <h1>MY ANIME PROFILE</h1>\
-      <img src="" alt="GOKU">
-      <h2>POWERS</h2>
-      <ol>
-        <li>SUPER SAIYAN</li>
-        <li>SUPER SAIYAN BLUE</li>
-        <li>UI</li>
-      </ol>
-      <br>
-      <table border="1" style="border-color: aqua;">
-        <tr>
-          <th>NAME</th>
-          <th>POWERS</th>
-          <th>ANIME</th>
-          <th>RATING</th>
-        </tr>
-        <tr>
-          <td>GOKU</td>
-          <td>UI</td>
-          <td>DRAGON BALL</td>
-          <td>✨✨✨✨✨</td>
-        </tr>
-        <tr>
-          <td>VEGETA</td>
-          <td>UE</td>
-          <td>DRAGON BALL</td>
-          <td>✨✨✨✨✨</td>
-        </tr><tr>
-          <td>GOHAN</td>
-          <td>BEAST FORM</td>
-          <td>DRAGON BALL</td>
-          <td>✨✨✨✨</td>
-        </tr>
-      </table>
-      <br><br>
-      <button id="backbutton">BACK</button>
-      <a href="www.google.com" target="_blank">
-        <button id="button">WATCH ANIME</button>
-      </a>
-      <a href="nextindex.html">
-       <button id="nextbutton">NEXT</button>
-       </a>
-      <br><br>
-      <hr>
-      <h3>MADE BY MANISH</h3>
-    </body>
-  </head>
-</HTml>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="description"
+        content="POTARA GAMES - Play amazing browser games for free."
+    >
+
+    <title>POTARA GAMES</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- Background Effects -->
+    <div class="background-effects">
+        <div class="glow glow-one"></div>
+        <div class="glow glow-two"></div>
+        <div class="glow glow-three"></div>
+    </div>
+
+    <!-- Loading Screen -->
+    <div id="loader">
+        <div class="loader-logo">POTARA</div>
+
+        <div class="loading-bar">
+            <div class="loading-progress"></div>
+        </div>
+
+        <p>Loading Gaming World...</p>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+
+        <a href="#home" class="logo">
+            <span class="logo-icon">P</span>
+
+            <div>
+                <h1>POTARA</h1>
+                <p>GAMES</p>
+            </div>
+        </a>
+
+        <nav class="navbar" id="navbar">
+            <a href="#home" class="nav-link active">Home</a>
+            <a href="#games" class="nav-link">Games</a>
+            <a href="#features" class="nav-link">Features</a>
+            <a href="#about" class="nav-link">About</a>
+            <a href="#contact" class="nav-link">Contact</a>
+        </nav>
+
+        <div class="header-buttons">
+
+            <button
+                class="icon-button"
+                id="soundButton"
+                title="Sound"
+                aria-label="Toggle Sound"
+            >
+                🔊
+            </button>
+
+            <button
+                class="menu-button"
+                id="menuButton"
+                aria-label="Open Menu"
+            >
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+        </div>
+
+    </header>
+
+    <main>
+
+        <!-- Hero Section -->
+        <section class="hero" id="home">
+
+            <div class="hero-content">
+
+                <div class="hero-badge">
+                    <span></span>
+                    Welcome to the Gaming Future
+                </div>
+
+                <h2>
+                    ENTER THE WORLD OF
+                    <span>POTARA GAMES</span>
+                </h2>
+
+                <p class="hero-description">
+                    Discover awesome browser games, complete challenges,
+                    break records and become the ultimate gaming champion.
+                </p>
+
+                <div class="hero-buttons">
+
+                    <a href="#games" class="primary-button">
+                        <span>▶</span>
+                        PLAY NOW
+                    </a>
+
+                    <a href="#about" class="secondary-button">
+                        EXPLORE MORE
+                    </a>
+
+                </div>
+
+                <div class="hero-stats">
+
+                    <div class="hero-stat">
+                        <strong class="counter" data-target="12">0</strong>
+                        <span>Games</span>
+                    </div>
+
+                    <div class="hero-stat">
+                        <strong class="counter" data-target="2500">0</strong>
+                        <span>Players</span>
+                    </div>
+
+                    <div class="hero-stat">
+                        <strong class="counter" data-target="99">0</strong>
+                        <span>% Fun</span>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="hero-visual">
+
+                <div class="controller-orbit orbit-one"></div>
+                <div class="controller-orbit orbit-two"></div>
+
+                <div class="gaming-controller">
+                    <div class="controller-top-light"></div>
+
+                    <div class="left-controls">
+                        <span class="up"></span>
+                        <span class="left"></span>
+                        <span class="center"></span>
+                        <span class="right"></span>
+                        <span class="down"></span>
+                    </div>
+
+                    <div class="controller-center">
+                        <div class="controller-logo">P</div>
+                    </div>
+
+                    <div class="right-controls">
+                        <button class="game-key key-one">X</button>
+                        <button class="game-key key-two">Y</button>
+                        <button class="game-key key-three">A</button>
+                        <button class="game-key key-four">B</button>
+                    </div>
+
+                    <div class="controller-handle handle-left"></div>
+                    <div class="controller-handle handle-right"></div>
+                </div>
+
+                <div class="floating-card floating-card-one">
+                    <span>🏆</span>
+                    <div>
+                        <small>Top Player</small>
+                        <strong>PotaraBhai</strong>
+                    </div>
+                </div>
+
+                <div class="floating-card floating-card-two">
+                    <span>⚡</span>
+                    <div>
+                        <small>Gaming Mode</small>
+                        <strong>ONLINE</strong>
+                    </div>
+                </div>
+
+            </div>
+
+            <a href="#games" class="scroll-down">
+                <span>Scroll Down</span>
+                <div>↓</div>
+            </a>
+
+        </section>
+
+        <!-- Games Section -->
+        <section class="section games-section" id="games">
+
+            <div class="section-heading">
+                <p>OUR COLLECTION</p>
+                <h2>POPULAR <span>GAMES</span></h2>
+                <h3>
+                    Choose your game, start playing and become a champion.
+                </h3>
+            </div>
+
+            <div class="game-controls">
+
+                <div class="search-box">
+                    <span>⌕</span>
+
+                    <input
+                        type="text"
+                        id="gameSearch"
+                        placeholder="Search games..."
+                        autocomplete="off"
+                    >
+                </div>
+
+                <div class="category-buttons">
+                    <button class="category-button active" data-category="all">
+                        All
+                    </button>
+
+                    <button class="category-button" data-category="action">
+                        Action
+                    </button>
+
+                    <button class="category-button" data-category="arcade">
+                        Arcade
+                    </button>
+
+                    <button class="category-button" data-category="puzzle">
+                        Puzzle
+                    </button>
+                </div>
+
+            </div>
+
+            <div class="games-grid" id="gamesGrid">
+
+                <article
+                    class="game-card"
+                    data-name="Neon Runner"
+                    data-category="arcade"
+                >
+                    <div class="game-image neon-runner">
+                        <div class="game-art">🏃</div>
+
+                        <div class="game-status">
+                            <span></span>
+                            ONLINE
+                        </div>
+
+                        <div class="game-rating">⭐ 4.9</div>
+                    </div>
+
+                    <div class="game-info">
+                        <div>
+                            <p>ARCADE</p>
+                            <h3>Neon Runner</h3>
+                        </div>
+
+                        <button
+                            class="play-game-button"
+                            data-game="Neon Runner"
+                        >
+                            ▶
+                        </button>
+                    </div>
+                </article>
+
+                <article
+                    class="game-card"
+                    data-name="Zombie Survival"
+                    data-category="action"
+                >
+                    <div class="game-image zombie-survival">
+                        <div class="game-art">🧟</div>
+
+                        <div class="game-status">
+                            <span></span>
+                            ONLINE
+                        </div>
+
+                        <div class="game-rating">⭐ 4.8</div>
+                    </div>
+
+                    <div class="game-info">
+                        <div>
+                            <p>ACTION</p>
+                            <h3>Zombie Survival</h3>
+                        </div>
+
+                        <button
+                            class="play-game-button"
+                            data-game="Zombie Survival"
+                        >
+                            ▶
+                        </button>
+                    </div>
+                </article>
+
+                <article
+                    class="game-card"
+                    data-name="Space Defender"
+                    data-category="action"
+                >
+                    <div class="game-image space-defender">
+                        <div class="game-art">🚀</div>
+
+                        <div class="game-status">
+                            <span></span>
+                            ONLINE
+                        </div>
+
+                        <div class="game-rating">⭐ 4.7</div>
+                    </div>
+
+                    <div class="game-info">
+                        <div>
+                            <p>ACTION</p>
+                            <h3>Space Defender</h3>
+                        </div>
+
+                        <button
+                            class="play-game-button"
+                            data-game="Space Defender"
+                        >
+                            ▶
+                        </button>
+                    </div>
+                </article>
+
+                <article
+                    class="game-card"
+                    data-name="Brain Puzzle"
+                    data-category="puzzle"
+                >
+                    <div class="game-image brain-puzzle">
+                        <div class="game-art">🧠</div>
+
+                        <div class="game-status">
+                            <span></span>
+                            ONLINE
+                        </div>
+
+                        <div class="game-rating">⭐ 4.6</div>
+                    </div>
+
+                    <div class="game-info">
+                        <div>
+                            <p>PUZZLE</p>
+                            <h3>Brain Puzzle</h3>
+                        </div>
+
+                        <button
+                            class="play-game-button"
+                            data-game="Brain Puzzle"
+                        >
+                            ▶
+                        </button>
+                    </div>
+                </article>
+
+                <article
+                    class="game-card"
+                    data-name="Speed Racer"
+                    data-category="arcade"
+                >
+                    <div class="game-image speed-racer">
+                        <div class="game-art">🏎️</div>
+
+                        <div class="game-status">
+                            <span></span>
+                            ONLINE
+                        </div>
+
+                        <div class="game-rating">⭐ 4.9</div>
+                    </div>
+
+                    <div class="game-info">
+                        <div>
+                            <p>ARCADE</p>
+                            <h3>Speed Racer</h3>
+                        </div>
+
+                        <button
+                            class="play-game-button"
+                            data-game="Speed Racer"
+                        >
+                            ▶
+                        </button>
+                    </div>
+                </article>
+
+                <article
+                    class="game-card"
+                    data-name="Ninja Battle"
+                    data-category="action"
+                >
+                    <div class="game-image ninja-battle">
+                        <div class="game-art">🥷</div>
+
+                        <div class="game-status">
+                            <span></span>
+                            ONLINE
+                        </div>
+
+                        <div class="game-rating">⭐ 4.8</div>
+                    </div>
+
+                    <div class="game-info">
+                        <div>
+                            <p>ACTION</p>
+                            <h3>Ninja Battle</h3>
+                        </div>
+
+                        <button
+                            class="play-game-button"
+                            data-game="Ninja Battle"
+                        >
+                            ▶
+                        </button>
+                    </div>
+                </article>
+
+            </div>
+
+            <p class="no-results" id="noResults">
+                No games found 😭
+            </p>
+
+        </section>
+
+        <!-- Features Section -->
+        <section class="section features-section" id="features">
+
+            <div class="section-heading">
+                <p>WHY CHOOSE US?</p>
+                <h2>POWERFUL <span>FEATURES</span></h2>
+                <h3>
+                    Everything you need for an amazing gaming experience.
+                </h3>
+            </div>
+
+            <div class="features-grid">
+
+                <article class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Fast Loading</h3>
+                    <p>
+                        Optimized design provides a smooth and fast experience
+                        on mobile and desktop.
+                    </p>
+                </article>
+
+                <article class="feature-card">
+                    <div class="feature-icon">🎮</div>
+                    <h3>Awesome Games</h3>
+                    <p>
+                        Play exciting arcade, action and puzzle games directly
+                        inside your browser.
+                    </p>
+                </article>
+
+                <article class="feature-card">
+                    <div class="feature-icon">📱</div>
+                    <h3>Mobile Friendly</h3>
+                    <p>
+                        Fully responsive controls and layouts that work
+                        perfectly on every screen.
+                    </p>
+                </article>
+
+                <article class="feature-card">
+                    <div class="feature-icon">🏆</div>
+                    <h3>Challenges</h3>
+                    <p>
+                        Complete challenges, beat high scores and become the
+                        ultimate champion.
+                    </p>
+                </article>
+
+                <article class="feature-card">
+                    <div class="feature-icon">🔒</div>
+                    <h3>Safe Platform</h3>
+                    <p>
+                        Clean and safe gaming website built for players of
+                        different ages.
+                    </p>
+                </article>
+
+                <article class="feature-card">
+                    <div class="feature-icon">🔄</div>
+                    <h3>Regular Updates</h3>
+                    <p>
+                        New games, improvements and features will be added
+                        regularly.
+                    </p>
+                </article>
+
+            </div>
+
+        </section>
+
+        <!-- About Section -->
+        <section class="section about-section" id="about">
+
+            <div class="about-visual">
+
+                <div class="about-box">
+                    <div class="about-logo">P</div>
+
+                    <h3>POTARA GAMES</h3>
+
+                    <p>LEVEL UP YOUR WORLD</p>
+
+                    <div class="about-lines">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="about-content">
+                <p class="mini-heading">ABOUT POTARA GAMES</p>
+
+                <h2>
+                    BUILT FOR
+                    <span>REAL GAMERS</span>
+                </h2>
+
+                <p>
+                    POTARA GAMES is a gaming platform created by Manish BK.
+                    The mission is simple: create fun, stylish and exciting
+                    games that everyone can enjoy.
+                </p>
+
+                <p>
+                    This website is built using HTML, CSS, JavaScript and
+                    hosted online using GitHub Pages.
+                </p>
+
+                <div class="about-list">
+                    <div>✓ Free browser games</div>
+                    <div>✓ Mobile and PC support</div>
+                    <div>✓ Fast and responsive design</div>
+                    <div>✓ New updates coming soon</div>
+                </div>
+
+                <a href="#games" class="primary-button">
+                    DISCOVER GAMES
+                </a>
+            </div>
+
+        </section>
+
+        <!-- Newsletter -->
+        <section class="newsletter">
+
+            <div>
+                <p>JOIN THE POTARA ARMY</p>
+                <h2>GET GAMING UPDATES</h2>
+                <span>
+                    Be the first to know about new games and features.
+                </span>
+            </div>
+
+            <form class="newsletter-form" id="newsletterForm">
+
+                <input
+                    type="email"
+                    id="emailInput"
+                    placeholder="Enter your email"
+                    required
+                >
+
+                <button type="submit">
+                    JOIN NOW
+                </button>
+
+            </form>
+
+        </section>
+
+        <!-- Contact -->
+        <section class="section contact-section" id="contact">
+
+            <div class="section-heading">
+                <p>CONTACT</p>
+                <h2>LET'S <span>CONNECT</span></h2>
+                <h3>
+                    Have an idea, suggestion or game request? Send a message.
+                </h3>
+            </div>
+
+            <form class="contact-form" id="contactForm">
+
+                <div class="input-row">
+
+                    <div class="input-group">
+                        <label for="nameInput">Your Name</label>
+
+                        <input
+                            type="text"
+                            id="nameInput"
+                            placeholder="Enter your name"
+                            required
+                        >
+                    </div>
+
+                    <div class="input-group">
+                        <label for="contactEmail">Your Email</label>
+
+                        <input
+                            type="email"
+                            id="contactEmail"
+                            placeholder="Enter your email"
+                            required
+                        >
+                    </div>
+
+                </div>
+
+                <div class="input-group">
+                    <label for="subjectInput">Subject</label>
+
+                    <input
+                        type="text"
+                        id="subjectInput"
+                        placeholder="Enter message subject"
+                        required
+                    >
+                </div>
+
+                <div class="input-group">
+                    <label for="messageInput">Message</label>
+
+                    <textarea
+                        id="messageInput"
+                        rows="6"
+                        placeholder="Write your message..."
+                        required
+                    ></textarea>
+                </div>
+
+                <button class="primary-button form-button" type="submit">
+                    SEND MESSAGE
+                </button>
+
+            </form>
+
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+
+        <div class="footer-main">
+
+            <a href="#home" class="logo">
+                <span class="logo-icon">P</span>
+
+                <div>
+                    <h1>POTARA</h1>
+                    <p>GAMES</p>
+                </div>
+            </a>
+
+            <p>
+                Play. Compete. Win. Repeat.
+            </p>
+
+            <div class="social-buttons">
+                <button title="YouTube">▶</button>
+                <button title="Discord">🎮</button>
+                <button title="GitHub">⌘</button>
+            </div>
+
+        </div>
+
+        <div class="footer-bottom">
+            <p>
+                © <span id="currentYear"></span> POTARA GAMES.
+                All rights reserved.
+            </p>
+
+            <p>
+                Made with ❤️ by <strong>Manish BK</strong>
+            </p>
+        </div>
+
+    </footer>
+
+    <!-- Notification -->
+    <div class="notification" id="notification">
+        <span id="notificationIcon">✓</span>
+        <p id="notificationText">Success!</p>
+    </div>
+
+    <!-- Back To Top -->
+    <button
+        class="back-to-top"
+        id="backToTop"
+        title="Back to top"
+    >
+        ↑
+    </button>
+
+    <script src="script.js"></script>
+
+</body>
+</html>
