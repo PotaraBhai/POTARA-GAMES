@@ -62,7 +62,9 @@ let bullets = [];
 let zombies = [];
 let particles = [];
 
-/* Canvas Size */
+/* =========================
+   CANVAS SIZE
+========================= */
 
 function resizeCanvas() {
     canvas.width = window.innerWidth;
@@ -72,12 +74,16 @@ function resizeCanvas() {
         player.x = canvas.width / 2;
         player.y = canvas.height / 2;
     }
+
+    draw();
 }
 
 window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
 
-/* Start Game */
+/* =========================
+   START / RESET GAME
+========================= */
 
 function resetGame() {
     score = 0;
@@ -116,10 +122,12 @@ function startGame() {
 startButton.addEventListener("click", startGame);
 restartButton.addEventListener("click", startGame);
 
-/* Pause */
+/* =========================
+   PAUSE SYSTEM
+========================= */
 
 function pauseGame() {
-    if (!gameRunning) {
+    if (!gameRunning || gamePaused) {
         return;
     }
 
@@ -128,6 +136,10 @@ function pauseGame() {
 }
 
 function resumeGame() {
+    if (!gameRunning || !gamePaused) {
+        return;
+    }
+
     gamePaused = false;
     pauseScreen.style.display = "none";
 
@@ -145,7 +157,9 @@ pauseButton.addEventListener("click", function () {
 
 resumeButton.addEventListener("click", resumeGame);
 
-/* Keyboard */
+/* =========================
+   KEYBOARD CONTROLS
+========================= */
 
 window.addEventListener("keydown", function (event) {
     keys[event.key.toLowerCase()] = true;
@@ -156,6 +170,10 @@ window.addEventListener("keydown", function (event) {
     }
 
     if (event.key === "Escape") {
+        if (!gameRunning) {
+            return;
+        }
+
         if (gamePaused) {
             resumeGame();
         } else {
@@ -168,7 +186,9 @@ window.addEventListener("keyup", function (event) {
     keys[event.key.toLowerCase()] = false;
 });
 
-/* Mouse Aim */
+/* =========================
+   MOUSE AIM + SHOOT
+========================= */
 
 canvas.addEventListener("mousemove", function (event) {
     const rect = canvas.getBoundingClientRect();
@@ -186,7 +206,9 @@ canvas.addEventListener("mousedown", function () {
     shootBullet();
 });
 
-/* Mobile Joystick */
+/* =========================
+   MOBILE JOYSTICK
+========================= */
 
 joystickArea.addEventListener("pointerdown", function (event) {
     joystick.active = true;
@@ -250,7 +272,9 @@ function stopJoystick(event) {
     joystickStick.style.transform = "translate(0, 0)";
 }
 
-/* Mobile Shooting */
+/* =========================
+   MOBILE SHOOT BUTTON
+========================= */
 
 let shootingInterval = null;
 
@@ -259,7 +283,11 @@ shootButton.addEventListener("pointerdown", function (event) {
 
     shootBullet();
 
-    shootingInterval = setInterval(shootBullet, 220);
+    clearInterval(shootingInterval);
+
+    shootingInterval = setInterval(function () {
+        shootBullet();
+    }, 220);
 });
 
 function stopShooting() {
@@ -271,7 +299,9 @@ shootButton.addEventListener("pointerup", stopShooting);
 shootButton.addEventListener("pointercancel", stopShooting);
 shootButton.addEventListener("pointerleave", stopShooting);
 
-/* Bullet */
+/* =========================
+   BULLET SYSTEM
+========================= */
 
 function shootBullet() {
     if (!gameRunning || gamePaused) {
@@ -336,7 +366,9 @@ function isMobileDevice() {
     );
 }
 
-/* Zombies */
+/* =========================
+   ZOMBIE SPAWN
+========================= */
 
 function spawnZombie() {
     const side = Math.floor(Math.random() * 4);
@@ -371,7 +403,9 @@ function spawnZombie() {
     });
 }
 
-/* Update */
+/* =========================
+   UPDATE GAME
+========================= */
 
 function update(deltaTime) {
     updatePlayer(deltaTime);
@@ -395,6 +429,10 @@ function update(deltaTime) {
 
     updateUI();
 }
+
+/* =========================
+   PLAYER MOVEMENT
+========================= */
 
 function updatePlayer(deltaTime) {
     let moveX = 0;
@@ -440,15 +478,23 @@ function updatePlayer(deltaTime) {
     );
 }
 
+/* =========================
+   UPDATE BULLETS
+========================= */
+
 function updateBullets(deltaTime) {
     for (let i = bullets.length - 1; i >= 0; i--) {
         const bullet = bullets[i];
 
-        bullet.x += Math.cos(bullet.angle) *
-            bullet.speed * deltaTime;
+        bullet.x +=
+            Math.cos(bullet.angle) *
+            bullet.speed *
+            deltaTime;
 
-        bullet.y += Math.sin(bullet.angle) *
-            bullet.speed * deltaTime;
+        bullet.y +=
+            Math.sin(bullet.angle) *
+            bullet.speed *
+            deltaTime;
 
         bullet.life -= deltaTime;
 
@@ -503,6 +549,10 @@ function updateBullets(deltaTime) {
     }
 }
 
+/* =========================
+   UPDATE ZOMBIES
+========================= */
+
 function updateZombies(deltaTime) {
     for (let i = zombies.length - 1; i >= 0; i--) {
         const zombie = zombies[i];
@@ -512,14 +562,17 @@ function updateZombies(deltaTime) {
             player.x - zombie.x
         );
 
-        zombie.x += Math.cos(angle) *
-            zombie.speed * deltaTime;
+        zombie.x +=
+            Math.cos(angle) *
+            zombie.speed *
+            deltaTime;
 
-        zombie.y += Math.sin(angle) *
-            zombie.speed * deltaTime;
+        zombie.y +=
+            Math.sin(angle) *
+            zombie.speed *
+            deltaTime;
 
         zombie.rotation = angle;
-
         zombie.damageTimer -= deltaTime;
 
         const distance = Math.hypot(
@@ -550,6 +603,10 @@ function updateZombies(deltaTime) {
     }
 }
 
+/* =========================
+   PARTICLES
+========================= */
+
 function updateParticles(deltaTime) {
     for (let i = particles.length - 1; i >= 0; i--) {
         const particle = particles[i];
@@ -564,8 +621,6 @@ function updateParticles(deltaTime) {
         }
     }
 }
-
-/* Particles */
 
 function createParticles(x, y, color, count) {
     for (let i = 0; i < count; i++) {
@@ -584,7 +639,9 @@ function createParticles(x, y, color, count) {
     }
 }
 
-/* Draw */
+/* =========================
+   DRAW EVERYTHING
+========================= */
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -595,6 +652,10 @@ function draw() {
     drawZombies();
     drawPlayer();
 }
+
+/* =========================
+   BACKGROUND
+========================= */
 
 function drawBackgroundGrid() {
     ctx.fillStyle = "#06080d";
@@ -642,6 +703,10 @@ function drawBackgroundGrid() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
+/* =========================
+   DRAW PLAYER
+========================= */
+
 function drawPlayer() {
     ctx.save();
 
@@ -653,14 +718,26 @@ function drawPlayer() {
 
     ctx.fillStyle = "#00ddea";
     ctx.beginPath();
-    ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
+    ctx.arc(
+        0,
+        0,
+        player.radius,
+        0,
+        Math.PI * 2
+    );
     ctx.fill();
 
     ctx.shadowBlur = 0;
 
     ctx.fillStyle = "#071019";
     ctx.beginPath();
-    ctx.arc(0, 0, 13, 0, Math.PI * 2);
+    ctx.arc(
+        0,
+        0,
+        13,
+        0,
+        Math.PI * 2
+    );
     ctx.fill();
 
     ctx.fillStyle = "#dcefff";
@@ -671,6 +748,10 @@ function drawPlayer() {
 
     ctx.restore();
 }
+
+/* =========================
+   DRAW ZOMBIES
+========================= */
 
 function drawZombieFace(zombie) {
     ctx.save();
@@ -706,13 +787,18 @@ function drawZombieFace(zombie) {
     ctx.fill();
 
     ctx.fillStyle = "#ff365e";
+
     ctx.beginPath();
     ctx.arc(7, -7, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
     ctx.arc(7, 7, 4, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.strokeStyle = "#a6ff8c";
     ctx.lineWidth = 3;
+
     ctx.beginPath();
     ctx.moveTo(-5, -10);
     ctx.lineTo(-12, 0);
@@ -723,8 +809,14 @@ function drawZombieFace(zombie) {
 }
 
 function drawZombies() {
-    zombies.forEach(drawZombieFace);
+    zombies.forEach(function (zombie) {
+        drawZombieFace(zombie);
+    });
 }
+
+/* =========================
+   DRAW BULLETS
+========================= */
 
 function drawBullets() {
     bullets.forEach(function (bullet) {
@@ -734,6 +826,7 @@ function drawBullets() {
         ctx.shadowBlur = 13;
 
         ctx.fillStyle = "#fff08a";
+
         ctx.beginPath();
         ctx.arc(
             bullet.x,
@@ -747,6 +840,10 @@ function drawBullets() {
         ctx.restore();
     });
 }
+
+/* =========================
+   DRAW PARTICLES
+========================= */
 
 function drawParticles() {
     particles.forEach(function (particle) {
@@ -773,7 +870,9 @@ function drawParticles() {
     });
 }
 
-/* UI */
+/* =========================
+   UI UPDATE
+========================= */
 
 function updateUI() {
     const healthPercent =
@@ -800,11 +899,16 @@ function updateUI() {
     }
 }
 
-/* Game Over */
+/* =========================
+   GAME OVER
+========================= */
 
 function endGame() {
     gameRunning = false;
     gamePaused = false;
+
+    stopShooting();
+    stopJoystick({});
 
     finalScore.textContent = score;
     finalKills.textContent = kills;
@@ -812,7 +916,9 @@ function endGame() {
     gameOverScreen.style.display = "grid";
 }
 
-/* Main Loop */
+/* =========================
+   MAIN GAME LOOP
+========================= */
 
 function gameLoop(currentTime) {
     if (!gameRunning || gamePaused) {
@@ -832,9 +938,12 @@ function gameLoop(currentTime) {
     requestAnimationFrame(gameLoop);
 }
 
-/* Initial Screen Drawing */
+/* =========================
+   INITIAL DRAWING
+========================= */
 
 player.x = canvas.width / 2;
 player.y = canvas.height / 2;
 
+updateUI();
 draw();
