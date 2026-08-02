@@ -1635,3 +1635,128 @@ body.pointer-locked #crosshair {
     font-size: 5px;
   }
 }
+
+
+/* =========================================
+   V5.4 — COMBAT EVOLUTION
+========================================= */
+
+#xpPanel {
+  position: fixed;
+  left: 50%;
+  top: 124px;
+  z-index: 18;
+  width: min(360px, 34vw);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid rgba(0,236,255,.22);
+  border-radius: 10px;
+  background: rgba(3,8,10,.8);
+  backdrop-filter: blur(10px);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+#xpPanel > span,
+#xpPanel > strong {
+  color: #77f4ff;
+  font: 800 7px "Orbitron";
+}
+
+.xp-track {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: rgba(255,255,255,.08);
+}
+
+#xpFill {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg,#00bcd4,#00ecff,#a8ffff);
+  box-shadow: 0 0 12px rgba(0,236,255,.55);
+  transition: width .2s ease;
+}
+
+#combatMessage {
+  position: fixed;
+  left: 50%;
+  top: 28%;
+  z-index: 42;
+  opacity: 0;
+  color: #fff;
+  font: 900 16px "Orbitron";
+  text-shadow: 0 0 12px currentColor;
+  transform: translate(-50%, -50%) scale(.8);
+  pointer-events: none;
+}
+
+#combatMessage.show {
+  animation: combatMessage .55s ease forwards;
+}
+
+#combatMessage.headshot {
+  color: #ffe45c;
+}
+
+#combatMessage.levelup {
+  color: #00ecff;
+  font-size: 22px;
+}
+
+@keyframes combatMessage {
+  0% { opacity: 0; transform: translate(-50%, 0) scale(.75); }
+  25%,70% { opacity: 1; transform: translate(-50%, -15px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -35px) scale(1.08); }
+}
+
+#meleeButton {
+  width: 48px;
+  height: 48px;
+  border: 2px solid rgba(255,228,92,.45);
+  background: rgba(255,228,92,.13);
+  font-size: 17px;
+}
+
+.blood-pool {
+  position: fixed;
+  z-index: 8;
+  border-radius: 50%;
+  background: radial-gradient(circle,rgba(105,0,18,.72),rgba(55,0,8,.18) 62%,transparent 74%);
+  pointer-events: none;
+}
+
+@media (orientation: landscape) and (pointer: coarse) {
+  #xpPanel {
+    top: 88px;
+    width: 200px;
+    padding: 4px 6px;
+    gap: 4px;
+  }
+
+  #xpPanel > span,
+  #xpPanel > strong {
+    font-size: 4px;
+  }
+
+  .xp-track {
+    height: 4px;
+  }
+
+  #meleeButton {
+    width: 39px;
+    height: 39px;
+    font-size: 14px;
+  }
+
+  #combatMessage {
+    font-size: 10px;
+  }
+
+  #combatMessage.levelup {
+    font-size: 14px;
+  }
+}
