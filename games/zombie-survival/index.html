@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#041006">
-  <title>Zombie Survival Remastered V5.3 | POTARA GAMES</title>
+  <title>Zombie Survival Remastered V5.4 | POTARA GAMES</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -40,6 +40,7 @@
   <canvas id="gameCanvas"></canvas>
   <div id="crosshair"><span></span><span></span></div>
   <div id="damageFlash"></div>
+  <div id="combatMessage"></div>
 
   <header class="topbar">
     <a class="back-btn" href="../../index.html">← POTARA GAMES</a>
@@ -84,6 +85,7 @@
       <div><span>🏆</span><small>BEST</small><strong id="highScoreText">0</strong></div>
       <div><span>🪙</span><small>COINS</small><strong id="coinsText">0</strong></div>
       <div><span>💵</span><small>CASH</small><strong id="cashText">0</strong></div>
+      <div><span>⚡</span><small>LEVEL</small><strong id="levelText">1</strong></div>
     </div>
   </section>
 
@@ -103,14 +105,14 @@
       <div class="controls-grid">
         <div>⌨️<b>MOVE</b><small>WASD / Arrows</small></div>
         <div>🖱️<b>AIM</b><small>Mouse</small></div>
-        <div>🔫<b>SHOOT</b><small>Click / Space</small></div>
+        <div>🔫<b>SHOOT</b><small>Click / Space • V Melee</small></div>
         <div>📱<b>MOBILE</b><small>Joystick + Shoot</small></div>
       </div>
       <div class="start-actions">
         <button id="startButton" class="main-btn">▶ ENTER INFECTED ZONE</button>
         <button id="fullscreenButton" class="secondary-btn">⛶ FULLSCREEN</button>
       </div>
-      <p class="version">VERSION 5.3 NAVIGATION</p>
+      <p class="version">VERSION 5.4 COMBAT EVOLUTION</p>
     </div>
   </div>
 
@@ -352,6 +354,7 @@
       </div>
     </div>
     <div class="mobile-actions">
+      <button id="meleeButton">🔪<span>MELEE</span></button>
       <button id="inventoryButton">🎒<span>BAG</span></button>
       <button id="interactButton">✋<span>USE</span></button>
       <button id="weaponButton">🔁<span>WEAPON</span></button>
