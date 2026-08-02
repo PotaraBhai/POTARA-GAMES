@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#041006">
-  <title>Zombie Survival V4 | POTARA GAMES</title>
+  <title>Zombie Survival Remastered V5 | POTARA GAMES</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -102,7 +102,7 @@
         <button id="startButton" class="main-btn">▶ ENTER INFECTED ZONE</button>
         <button id="fullscreenButton" class="secondary-btn">⛶ FULLSCREEN</button>
       </div>
-      <p class="version">VERSION 4.0</p>
+      <p class="version">VERSION 5.0 REMASTERED</p>
     </div>
   </div>
 
@@ -216,6 +216,46 @@
     </div>
   </div>
 
+
+  <div id="missionPanel">
+    <span>MISSION</span>
+    <strong id="missionText">Search a building for supplies</strong>
+  </div>
+
+  <div id="interactPrompt">
+    <kbd>E</kbd>
+    <span id="interactText">ENTER BUILDING</span>
+  </div>
+
+  <div class="overlay hidden" id="inventoryScreen">
+    <div class="panel inventory-panel">
+      <div class="inventory-head">
+        <div>
+          <p class="eyebrow">SURVIVOR EQUIPMENT</p>
+          <h2>INVEN<span>TORY</span></h2>
+        </div>
+        <button id="closeInventoryButton" class="inventory-close">✕</button>
+      </div>
+
+      <div class="inventory-layout">
+        <section class="inventory-grid" id="inventoryGrid"></section>
+
+        <aside class="inventory-info">
+          <div class="inventory-character">🧍‍♂️</div>
+          <h3 id="selectedItemName">SELECT AN ITEM</h3>
+          <p id="selectedItemDescription">
+            Loot buildings and crates to collect survival supplies.
+          </p>
+          <button id="useItemButton" disabled>USE ITEM</button>
+        </aside>
+      </div>
+
+      <p class="inventory-help">
+        PC: TAB / I to close • Mobile: tap the backpack button
+      </p>
+    </div>
+  </div>
+
 <div class="mobile-controls">
     <div id="joystickArea">
       <div class="joystick-base">
@@ -223,6 +263,8 @@
       </div>
     </div>
     <div class="mobile-actions">
+      <button id="inventoryButton">🎒<span>BAG</span></button>
+      <button id="interactButton">✋<span>USE</span></button>
       <button id="weaponButton">🔁<span>WEAPON</span></button>
       <button id="reloadButton">↻<span>RELOAD</span></button>
       <button id="shootButton">🔫<span>SHOOT</span></button>
