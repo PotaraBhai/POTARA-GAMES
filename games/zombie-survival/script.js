@@ -37,7 +37,9 @@ const UI = {
   joystickArea: $("joystickArea"),
   joystickStick: $("joystickStick"),
   shootBtn: $("shootButton"),
-  reloadBtn: $("reloadButton")
+  reloadBtn: $("reloadButton"),
+  crosshair: $("crosshair"),
+  fullscreenBtn: $("fullscreenButton")
 };
 
 const WORLD = { w: 3200, h: 2400 };
@@ -72,6 +74,9 @@ let mouseX = 0;
 let mouseY = 0;
 let soundEnabled = true;
 let audioCtx = null;
+let pointerLocked = false;
+let virtualMouseX = innerWidth / 2;
+let virtualMouseY = innerHeight / 2;
 let highScore = Number(localStorage.getItem("potaraZombieV2Best") || 0);
 
 const keys = {};
@@ -202,6 +207,42 @@ function collideBuildings(entity, ox, oy, radius) {
   }
 }
 
+
+/* Fullscreen helper */
+async function enterFullscreen() {
+  try {
+    const target = document.documentElement;
+
+    if (!document.fullscreenElement && target.requestFullscreen) {
+      await target.requestFullscreen();
+    }
+
+    if (
+      screen.orientation &&
+      screen.orientation.lock &&
+      isMobile()
+    ) {
+      try {
+        await screen.orientation.lock("landscape");
+      } catch (_) {
+        // Some browsers allow orientation lock only in installed apps/fullscreen.
+      }
+    }
+
+    setTimeout(resize, 100);
+  } catch (error) {
+    console.warn("Fullscreen could not start:", error);
+  }
+}
+
+if (UI.fullscreenBtn) {
+  UI.fullscreenBtn.addEventListener("click", enterFullscreen);
+}
+
+document.addEventListener("fullscreenchange", () => {
+  setTimeout(resize, 100);
+});
+
 /* Start/pause */
 function resetGame() {
   kills = 0;
@@ -242,11 +283,20 @@ function startGame() {
   showWave(1);
   lastTime = performance.now();
   raf = requestAnimationFrame(loop);
+
+  if (!isMobile()) {
+    setTimeout(lockMouse, 60);
+  }
 }
 
-function pauseGame() {
+function pauseGame(shouldUnlock = true) {
   if (!running || paused) return;
   paused = true;
+
+  if (shouldUnlock) {
+    unlockMouse();
+  }
+
   UI.pause.classList.remove("hidden");
 }
 function resumeGame() {
@@ -255,12 +305,22 @@ function resumeGame() {
   UI.pause.classList.add("hidden");
   lastTime = performance.now();
   raf = requestAnimationFrame(loop);
+
+  if (!isMobile()) {
+    setTimeout(lockMouse, 60);
+  }
 }
 
-UI.startBtn.addEventListener("click", startGame);
+UI.startBtn.addEventListener("click", async () => {
+  if (isMobile() && !document.fullscreenElement) {
+    await enterFullscreen();
+  }
+
+  startGame();
+});
 UI.restartBtn.addEventListener("click", startGame);
 UI.resumeBtn.addEventListener("click", resumeGame);
-UI.pauseBtn.addEventListener("click", () => paused ? resumeGame() : pauseGame());
+UI.pauseBtn.addEventListener("click", () => paused ? resumeGame() : pauseGame(true));
 
 /* Input */
 addEventListener("keydown", (e) => {
@@ -270,17 +330,71 @@ addEventListener("keydown", (e) => {
     shoot();
   }
   if (e.key.toLowerCase() === "r") startReload();
-  if (e.key === "Escape") paused ? resumeGame() : pauseGame();
 });
 addEventListener("keyup", (e) => keys[e.key.toLowerCase()] = false);
 
 canvas.addEventListener("mousemove", (e) => {
-  mouseX = e.clientX;
-  mouseY = e.clientY;
+  if (pointerLocked) {
+    virtualMouseX = clamp(virtualMouseX + e.movementX, 0, innerWidth);
+    virtualMouseY = clamp(virtualMouseY + e.movementY, 0, innerHeight);
+    mouseX = virtualMouseX;
+    mouseY = virtualMouseY;
+  } else {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+    virtualMouseX = mouseX;
+    virtualMouseY = mouseY;
+  }
+
   const m = screenToWorld(mouseX, mouseY);
   player.aim = Math.atan2(m.y - player.y, m.x - player.x);
 });
-canvas.addEventListener("mousedown", shoot);
+
+canvas.addEventListener("mousedown", (e) => {
+  if (!running || paused) return;
+
+  if (!isMobile() && !pointerLocked) {
+    lockMouse();
+    return;
+  }
+
+  if (e.button === 0) {
+    shoot();
+  }
+});
+
+
+/* Pointer lock — PC only */
+function lockMouse() {
+  if (!running || paused || isMobile() || document.pointerLockElement === canvas) {
+    return;
+  }
+
+  virtualMouseX = innerWidth / 2;
+  virtualMouseY = innerHeight / 2;
+  canvas.requestPointerLock();
+}
+
+function unlockMouse() {
+  if (document.pointerLockElement) {
+    document.exitPointerLock();
+  }
+}
+
+document.addEventListener("pointerlockchange", () => {
+  pointerLocked = document.pointerLockElement === canvas;
+  document.body.classList.toggle("pointer-locked", pointerLocked);
+
+  if (!pointerLocked && running && !paused && !isMobile()) {
+    pauseGame(false);
+  }
+});
+
+document.addEventListener("pointerlockerror", () => {
+  pointerLocked = false;
+  document.body.classList.remove("pointer-locked");
+  console.warn("Mouse lock could not start.");
+});
 
 /* Joystick */
 UI.joystickArea.addEventListener("pointerdown", (e) => {
@@ -863,6 +977,7 @@ function showWave(n){
 
 function endGame(){
   running=false;paused=false;
+  unlockMouse();
   cancelAnimationFrame(raf);
   clearInterval(shootInterval);
   stopJoystick();
@@ -891,3 +1006,12 @@ createWorld();
 resize();
 updateUI();
 draw();
+
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && running && !paused) {
+    pauseGame(true);
+  }
+});
+
+window.addEventListener("beforeunload", unlockMouse);
