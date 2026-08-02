@@ -1434,3 +1434,204 @@ body.pointer-locked #crosshair {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+
+/* =========================================
+   V5.3 — MAP SYMBOLS, WAYPOINT, WEATHER, FLASHLIGHT
+========================================= */
+
+#worldStatus {
+  position: fixed;
+  left: 50%;
+  top: 16px;
+  z-index: 19;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 10px;
+  background: rgba(3,8,4,.8);
+  backdrop-filter: blur(10px);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+#worldStatus span {
+  color: #dbe5dd;
+  font: 700 7px "Orbitron";
+  letter-spacing: 1px;
+}
+
+#worldStatus strong {
+  color: var(--green);
+  font: 800 8px "Orbitron";
+}
+
+.world-map-panel {
+  width: min(1050px, 97vw);
+  max-height: calc(100dvh - 20px);
+  overflow-y: auto;
+}
+
+.world-map-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: left;
+}
+
+.world-map-head h2 {
+  font-size: clamp(36px, 6vw, 58px);
+}
+
+.map-help {
+  margin: 10px 0;
+  color: #8e9b91;
+  text-align: left;
+}
+
+.world-map-wrap {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(87,255,109,.24);
+  border-radius: 14px;
+  background: #050a06;
+}
+
+#worldMapCanvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  cursor: crosshair;
+}
+
+.map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 12px 0;
+}
+
+.legend {
+  padding: 5px 8px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 7px;
+  background: rgba(255,255,255,.035);
+  font: 700 7px "Orbitron";
+}
+
+.legend.hospital { color: #ff4c5f; }
+.legend.police { color: #4d8fff; }
+.legend.weapon { color: #ff9d42; }
+.legend.store { color: #ffe45c; }
+.legend.safe { color: #57ff6d; }
+.legend.gas { color: #ff6252; }
+.legend.warehouse { color: #b8c0ba; }
+.legend.quest { color: #c997ff; }
+
+#clearWaypointButton {
+  width: 220px;
+}
+
+.waypoint-label {
+  position: fixed;
+  z-index: 26;
+  padding: 7px 10px;
+  border: 1px solid rgba(87,255,109,.4);
+  border-radius: 8px;
+  background: rgba(3,13,5,.9);
+  color: var(--green);
+  font: 800 7px "Orbitron";
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+}
+
+.rain-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 17;
+  opacity: 0;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(
+      108deg,
+      transparent 0,
+      transparent 18px,
+      rgba(180,220,255,.15) 19px,
+      transparent 20px
+    );
+  background-size: 45px 45px;
+  animation: rainMove .35s linear infinite;
+  transition: opacity .5s;
+}
+
+.rain-overlay.active {
+  opacity: .75;
+}
+
+@keyframes rainMove {
+  to { background-position: -45px 90px; }
+}
+
+.thunder-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 48;
+  opacity: 0;
+  pointer-events: none;
+  background: rgba(220,235,255,.7);
+}
+
+.thunder-flash.active {
+  animation: thunderFlash .45s ease;
+}
+
+@keyframes thunderFlash {
+  0%,100% { opacity: 0; }
+  20% { opacity: .7; }
+  35% { opacity: .1; }
+  55% { opacity: .45; }
+}
+
+@media (orientation: landscape) and (pointer: coarse) {
+  #worldStatus {
+    top: 5px;
+    padding: 5px 7px;
+    gap: 6px;
+  }
+
+  #worldStatus span,
+  #worldStatus strong {
+    font-size: 5px;
+  }
+
+  .world-map-panel {
+    padding: 9px 11px;
+  }
+
+  .world-map-head h2 {
+    font-size: 25px;
+  }
+
+  .map-help {
+    margin: 4px 0;
+    font-size: 7px;
+  }
+
+  .map-legend {
+    gap: 3px;
+    margin: 5px 0;
+  }
+
+  .legend {
+    padding: 3px 5px;
+    font-size: 4px;
+  }
+
+  #clearWaypointButton {
+    width: 150px;
+    min-height: 26px;
+    font-size: 5px;
+  }
+}
