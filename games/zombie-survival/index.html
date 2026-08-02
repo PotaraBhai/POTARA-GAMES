@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#041006">
-  <title>Zombie Survival Remastered V5.2 | POTARA GAMES</title>
+  <title>Zombie Survival Remastered V5.3 | POTARA GAMES</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -44,10 +44,17 @@
   <header class="topbar">
     <a class="back-btn" href="../../index.html">← POTARA GAMES</a>
     <div class="top-actions">
+      <button id="mapButton" aria-label="Open map">🗺️</button>
+      <button id="flashlightButton" aria-label="Toggle flashlight">🔦</button>
       <button id="soundButton" aria-label="Toggle sound">🔊</button>
       <button id="pauseButton" aria-label="Pause game">⏸</button>
     </div>
   </header>
+
+  <div id="worldStatus">
+    <span id="timeStatus">DAY 1 • 08:00</span>
+    <strong id="weatherStatus">☀️ CLEAR</strong>
+  </div>
 
   <section class="hud">
     <div class="health-card">
@@ -103,7 +110,7 @@
         <button id="startButton" class="main-btn">▶ ENTER INFECTED ZONE</button>
         <button id="fullscreenButton" class="secondary-btn">⛶ FULLSCREEN</button>
       </div>
-      <p class="version">VERSION 5.2 CITY UPDATE</p>
+      <p class="version">VERSION 5.3 NAVIGATION</p>
     </div>
   </div>
 
@@ -260,6 +267,42 @@
       </p>
 
       <div class="quest-list" id="questList"></div>
+    </div>
+  </div>
+
+  
+  <div class="overlay hidden" id="worldMapScreen">
+    <div class="panel world-map-panel">
+      <div class="world-map-head">
+        <div>
+          <p class="eyebrow">INFECTED CITY NAVIGATION</p>
+          <h2>WORLD <span>MAP</span></h2>
+        </div>
+        <button id="closeWorldMapButton" class="inventory-close">✕</button>
+      </div>
+
+      <p class="map-help">
+        Click any building to set a waypoint. Press M to close.
+      </p>
+
+      <div class="world-map-wrap">
+        <canvas id="worldMapCanvas" width="900" height="620"></canvas>
+      </div>
+
+      <div class="map-legend">
+        <span class="legend hospital">H Hospital</span>
+        <span class="legend police">P Police</span>
+        <span class="legend weapon">G Weapon Shop</span>
+        <span class="legend store">S General Store</span>
+        <span class="legend safe">⌂ Safe House</span>
+        <span class="legend gas">⛽ Gas Station</span>
+        <span class="legend warehouse">W Warehouse</span>
+        <span class="legend quest">! Quest Center</span>
+      </div>
+
+      <button id="clearWaypointButton" class="secondary-btn">
+        ✕ CLEAR WAYPOINT
+      </button>
     </div>
   </div>
 
