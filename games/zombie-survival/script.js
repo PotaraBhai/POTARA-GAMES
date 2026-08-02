@@ -3,6 +3,7 @@
 const $ = (id) => document.getElementById(id);
 const canvas = $("gameCanvas");
 const ctx = canvas.getContext("2d");
+const miniCtx = $("miniMap").getContext("2d");
 
 const UI = {
   loader: $("gameLoader"),
@@ -39,13 +40,72 @@ const UI = {
   shootBtn: $("shootButton"),
   reloadBtn: $("reloadButton"),
   crosshair: $("crosshair"),
-  fullscreenBtn: $("fullscreenButton")
+  fullscreenBtn: $("fullscreenButton"),
+  weaponName: $("weaponName"),
+  reserveAmmoText: $("reserveAmmoText"),
+  coins: $("coinsText"),
+  miniMap: $("miniMap"),
+  bossBar: $("bossBar"),
+  bossFill: $("bossFill"),
+  weaponBtn: $("weaponButton"),
+  waveComplete: $("waveCompleteScreen"),
+  completeWave: $("completeWave"),
+  completeKills: $("completeKills"),
+  completeCoins: $("completeCoins"),
+  completeScore: $("completeScore"),
+  continueWaveBtn: $("continueWaveButton"),
+  openShopBtn: $("openShopButton"),
+  shop: $("shopScreen"),
+  shopCoins: $("shopCoins"),
+  closeShopBtn: $("closeShopButton")
 };
 
 const WORLD = { w: 3200, h: 2400 };
-const MAG_SIZE = 12;
-const FIRE_DELAY = 0.19;
-const RELOAD_TIME = 1.05;
+const WEAPONS = {
+  pistol: {
+    name: "PISTOL",
+    mag: 12,
+    fireDelay: 0.19,
+    reload: 1.05,
+    speed: 950,
+    damage: 1,
+    pellets: 1,
+    spread: 0.015,
+    shake: 5,
+    color: "#ffd85c"
+  },
+  smg: {
+    name: "SMG",
+    mag: 28,
+    fireDelay: 0.075,
+    reload: 1.35,
+    speed: 900,
+    damage: 0.72,
+    pellets: 1,
+    spread: 0.055,
+    shake: 3.5,
+    color: "#9fe9ff"
+  },
+  shotgun: {
+    name: "SHOTGUN",
+    mag: 6,
+    fireDelay: 0.65,
+    reload: 1.7,
+    speed: 820,
+    damage: 0.8,
+    pellets: 7,
+    spread: 0.23,
+    shake: 12,
+    color: "#ffb25c"
+  }
+};
+
+let currentWeapon = "pistol";
+let weaponAmmo = {
+  pistol: WEAPONS.pistol.mag,
+  smg: WEAPONS.smg.mag,
+  shotgun: WEAPONS.shotgun.mag
+};
 
 let running = false;
 let paused = false;
@@ -63,7 +123,8 @@ let particles = [];
 let buildings = [];
 let decor = [];
 let pickups = [];
-let ammo = MAG_SIZE;
+let ammo = weaponAmmo[currentWeapon];
+let coins = Number(localStorage.getItem("potaraZombieCoins") || 0);
 let reloading = false;
 let reloadTimer = 0;
 let fireCooldown = 0;
@@ -78,6 +139,23 @@ let pointerLocked = false;
 let virtualMouseX = innerWidth / 2;
 let virtualMouseY = innerHeight / 2;
 let highScore = Number(localStorage.getItem("potaraZombieV2Best") || 0);
+let waveKills = 0;
+let waveCoins = 0;
+let waveBreakActive = false;
+let nextWaveKillTarget = 12;
+let bossAttackTimer = 0;
+
+const upgrades = JSON.parse(
+  localStorage.getItem("potaraZombieUpgrades") ||
+  JSON.stringify({
+    pistolDamage: 1,
+    smgRate: 1,
+    shotgunPower: 1,
+    maxHealth: 1,
+    armor: 0,
+    speed: 1
+  })
+);
 
 const keys = {};
 const camera = { x: 0, y: 0, tx: 0, ty: 0, sx: 0, sy: 0 };
@@ -189,7 +267,7 @@ function createWorld() {
   }
   for (let i = 0; i < 32; i++) {
     const p = safePosition(30);
-    decor.push({ type: "barrel", x: p.x, y: p.y, r: 15, explosive: Math.random() > .55 });
+    decor.push({ type: "barrel", x: p.x, y: p.y, r: 15, explosive: Math.random() > .35, health: 2, exploded: false });
   }
 }
 
@@ -255,7 +333,13 @@ function resetGame() {
   zombies = [];
   particles = [];
   pickups = [];
-  ammo = MAG_SIZE;
+  weaponAmmo = {
+    pistol: WEAPONS.pistol.mag,
+    smg: WEAPONS.smg.mag,
+    shotgun: WEAPONS.shotgun.mag
+  };
+  currentWeapon = "pistol";
+  ammo = weaponAmmo[currentWeapon];
   reloading = false;
   reloadTimer = 0;
   fireCooldown = 0;
@@ -263,10 +347,17 @@ function resetGame() {
   shake = 0;
   player.x = WORLD.w / 2;
   player.y = WORLD.h / 2;
+  player.maxHealth = 100 + (upgrades.maxHealth - 1) * 15;
+  player.speed = 285 + (upgrades.speed - 1) * 18;
   player.health = player.maxHealth;
-  player.armor = 0;
+  player.armor = upgrades.armor * 12;
   player.aim = 0;
   player.walk = 0;
+  waveKills = 0;
+  waveCoins = 0;
+  waveBreakActive = false;
+  nextWaveKillTarget = 12;
+  bossAttackTimer = 0;
   createWorld();
   cameraInstant();
   updateUI();
@@ -441,10 +532,50 @@ UI.shootBtn.addEventListener("pointerdown", (e) => {
   e.preventDefault();
   shoot();
   clearInterval(shootInterval);
-  shootInterval = setInterval(shoot, FIRE_DELAY * 1000);
+  shootInterval = setInterval(shoot, WEAPONS[currentWeapon].fireDelay * 1000);
 });
 ["pointerup","pointercancel","pointerleave"].forEach(type => UI.shootBtn.addEventListener(type, () => clearInterval(shootInterval)));
 UI.reloadBtn.addEventListener("click", startReload);
+
+
+/* Weapon system */
+function selectWeapon(name) {
+  if (!WEAPONS[name] || reloading) return;
+
+  weaponAmmo[currentWeapon] = ammo;
+  currentWeapon = name;
+  ammo = weaponAmmo[currentWeapon];
+
+  document.querySelectorAll(".weapon-slot").forEach((button) => {
+    button.classList.toggle(
+      "active",
+      button.dataset.weapon === currentWeapon
+    );
+  });
+
+  updateUI();
+  beep(420, .08, "square", .025);
+}
+
+document.querySelectorAll(".weapon-slot").forEach((button) => {
+  button.addEventListener("click", () => {
+    selectWeapon(button.dataset.weapon);
+  });
+});
+
+addEventListener("keydown", (event) => {
+  if (event.key === "1") selectWeapon("pistol");
+  if (event.key === "2") selectWeapon("smg");
+  if (event.key === "3") selectWeapon("shotgun");
+});
+
+if (UI.weaponBtn) {
+  UI.weaponBtn.addEventListener("click", () => {
+    const order = ["pistol", "smg", "shotgun"];
+    const next = order[(order.indexOf(currentWeapon) + 1) % order.length];
+    selectWeapon(next);
+  });
+}
 
 /* Audio */
 function audio() {
@@ -483,34 +614,83 @@ function nearestZombie() {
 }
 
 function shoot() {
-  if (!running || paused || reloading || fireCooldown > 0) return;
+  const baseWeapon = WEAPONS[currentWeapon];
+  const weapon = {
+    ...baseWeapon,
+    damage:
+      currentWeapon === "pistol"
+        ? baseWeapon.damage * (1 + (upgrades.pistolDamage - 1) * .22)
+        : currentWeapon === "shotgun"
+        ? baseWeapon.damage * (1 + (upgrades.shotgunPower - 1) * .18)
+        : baseWeapon.damage,
+    fireDelay:
+      currentWeapon === "smg"
+        ? Math.max(.038, baseWeapon.fireDelay * Math.pow(.92, upgrades.smgRate - 1))
+        : baseWeapon.fireDelay
+  };
+
+  if (!running || paused || waveBreakActive || reloading || fireCooldown > 0) return;
   if (ammo <= 0) return startReload();
 
-  let angle = player.aim;
+  let baseAngle = player.aim;
+
   if (isMobile()) {
     const target = nearestZombie();
     if (target) {
-      angle = Math.atan2(target.y - player.y, target.x - player.x);
-      player.aim = angle;
+      baseAngle = Math.atan2(target.y - player.y, target.x - player.x);
+      player.aim = baseAngle;
     }
   }
 
   ammo--;
-  fireCooldown = FIRE_DELAY;
-  muzzleFlash = .085;
-  shake = Math.max(shake, 5);
+  weaponAmmo[currentWeapon] = ammo;
+  fireCooldown = weapon.fireDelay;
+  muzzleFlash = currentWeapon === "shotgun" ? .13 : .085;
+  shake = Math.max(shake, weapon.shake);
 
-  const x = player.x + Math.cos(angle) * 42;
-  const y = player.y + Math.sin(angle) * 42;
-  bullets.push({x,y,px:x,py:y,r:4,speed:950,angle,life:1.25,damage:1});
-  burst(x,y,"#ffd85c",7,180);
-  beep(175,.08,"sawtooth",.07);
-  if (ammo === 0) setTimeout(startReload,170);
+  for (let i = 0; i < weapon.pellets; i++) {
+    const angle =
+      baseAngle +
+      (Math.random() - .5) * weapon.spread;
+
+    const x = player.x + Math.cos(angle) * 42;
+    const y = player.y + Math.sin(angle) * 42;
+
+    bullets.push({
+      x,
+      y,
+      px: x,
+      py: y,
+      r: currentWeapon === "shotgun" ? 3.5 : 4,
+      speed: weapon.speed,
+      angle,
+      life: currentWeapon === "shotgun" ? .72 : 1.25,
+      damage: weapon.damage,
+      color: weapon.color
+    });
+  }
+
+  burst(
+    player.x + Math.cos(baseAngle) * 42,
+    player.y + Math.sin(baseAngle) * 42,
+    weapon.color,
+    currentWeapon === "shotgun" ? 12 : 7,
+    currentWeapon === "shotgun" ? 250 : 180
+  );
+
+  beep(
+    currentWeapon === "shotgun" ? 90 : currentWeapon === "smg" ? 210 : 175,
+    currentWeapon === "shotgun" ? .16 : .08,
+    "sawtooth",
+    currentWeapon === "shotgun" ? .1 : .07
+  );
+
+  if (ammo === 0) setTimeout(startReload, 170);
   updateUI();
 }
 
 function startReload() {
-  if (!running || paused || reloading || ammo === MAG_SIZE) return;
+  if (!running || paused || reloading || ammo === WEAPONS[currentWeapon].mag) return;
   reloading = true;
   reloadTimer = 0;
   UI.reloadBar.classList.add("show");
@@ -521,11 +701,12 @@ function startReload() {
 function updateReload(dt) {
   if (!reloading) return;
   reloadTimer += dt;
-  const p = Math.min(1, reloadTimer / RELOAD_TIME);
+  const p = Math.min(1, reloadTimer / WEAPONS[currentWeapon].reload);
   UI.reloadProgress.style.width = p * 100 + "%";
   if (p >= 1) {
     reloading = false;
-    ammo = MAG_SIZE;
+    ammo = WEAPONS[currentWeapon].mag;
+    weaponAmmo[currentWeapon] = ammo;
     UI.reloadBar.classList.remove("show");
     beep(560,.09,"square",.035);
   }
@@ -543,10 +724,35 @@ function spawnZombie() {
 
   const rand = Math.random();
   let type = "normal";
-  if (wave >= 2 && rand > .75) type = "runner";
-  if (wave >= 4 && rand > .92) type = "tank";
+
+  const bossAlreadyAlive = zombies.some(z => z.type === "boss");
+  if (wave >= 5 && wave % 5 === 0 && !bossAlreadyAlive) {
+    type = "boss";
+  } else {
+    if (wave >= 2 && rand > .75) type = "runner";
+    if (wave >= 4 && rand > .92) type = "tank";
+  }
 
   const boost = 1 + wave * .055;
+
+  if (type === "boss") {
+    const hp = 35 + wave * 5;
+    zombies.push({
+      type,
+      x,
+      y,
+      r: 52,
+      speed: 42 * boost,
+      health: hp,
+      maxHealth: hp,
+      damage: 24,
+      hit: 0,
+      attack: 0,
+      walk: Math.random() * 10,
+      angle: 0
+    });
+    return;
+  }
   if (type === "runner") {
     zombies.push({type,x,y,r:20,speed:150*boost,health:1+Math.floor(wave/6),maxHealth:1+Math.floor(wave/6),damage:7,hit:0,attack:0,walk:Math.random()*10,angle:0});
   } else if (type === "tank") {
@@ -561,9 +767,23 @@ function spawnZombie() {
 function killZombie(index, z) {
   zombies.splice(index,1);
   kills++;
-  const reward = z.type === "tank" ? 500 : z.type === "runner" ? 160 : 100;
+  waveKills++;
+  const reward =
+    z.type === "boss" ? 1500 :
+    z.type === "tank" ? 500 :
+    z.type === "runner" ? 160 : 100;
+
+  const coinReward =
+    z.type === "boss" ? 50 :
+    z.type === "tank" ? 12 :
+    z.type === "runner" ? 4 : 2;
+
   score += reward * wave;
-  burst(z.x,z.y,z.type === "tank" ? "#7aff54" : "#42cf56",z.type === "tank" ? 42 : 22,z.type === "tank" ? 300 : 220);
+  coins += coinReward;
+  waveCoins += coinReward;
+  localStorage.setItem("potaraZombieCoins", String(coins));
+  showCoinPopup(z.x, z.y, coinReward);
+  burst(z.x,z.y,z.type === "boss" ? "#ff4f88" : z.type === "tank" ? "#7aff54" : "#42cf56",z.type === "boss" ? 70 : z.type === "tank" ? 42 : 22,z.type === "boss" ? 360 : z.type === "tank" ? 300 : 220);
   if (Math.random() < .14) pickups.push({type:Math.random()>.55?"armor":"health",x:z.x,y:z.y,r:16,life:15,t:Math.random()*10});
   if (z.type === "tank") shake = 18;
   beep(z.type === "tank" ? 70 : 110,z.type === "tank" ? .25 : .12,"sawtooth",z.type === "tank" ? .07 : .03);
@@ -583,18 +803,21 @@ function update(dt) {
   updateParticles(dt);
   updatePickups(dt);
   updateCamera(dt);
+  updateBossBar();
+  updateBossAttacks(dt);
 
-  spawnTimer += dt;
-  if (spawnTimer >= spawnDelay) {
+  if (!waveBreakActive) spawnTimer += dt;
+  if (!waveBreakActive && spawnTimer >= spawnDelay) {
     spawnTimer = 0;
     spawnZombie();
   }
 
-  const nextWave = Math.floor(kills / 12) + 1;
-  if (nextWave !== wave) {
-    wave = nextWave;
-    spawnDelay = Math.max(.36, 1.2 - wave * .065);
-    showWave(wave);
+  if (
+    !waveBreakActive &&
+    waveKills >= nextWaveKillTarget &&
+    !zombies.some(z => z.type === "boss")
+  ) {
+    beginWaveBreak();
   }
   updateUI();
 }
@@ -631,6 +854,34 @@ function updateBullets(dt) {
     if (b.life <= 0 || b.x < 0 || b.x > WORLD.w || b.y < 0 || b.y > WORLD.h || insideBuilding(b.x,b.y)) {
       burst(b.x,b.y,"#d8d5b8",4,70);
       bullets.splice(i,1);
+      continue;
+    }
+
+
+    let hitBarrel = false;
+
+    for (const item of decor) {
+      if (
+        item.type === "barrel" &&
+        item.explosive &&
+        !item.exploded &&
+        Math.hypot(b.x - item.x, b.y - item.y) < b.r + item.r
+      ) {
+        item.health -= b.damage;
+        bullets.splice(i, 1);
+        hitBarrel = true;
+
+        burst(b.x, b.y, "#ffb34c", 8, 150);
+
+        if (item.health <= 0) {
+          explodeBarrel(item);
+        }
+
+        break;
+      }
+    }
+
+    if (hitBarrel) {
       continue;
     }
 
@@ -763,6 +1014,7 @@ function draw() {
   drawLighting();
   drawFog();
   drawVignette();
+  drawMiniMap();
 }
 
 function drawGround() {
@@ -847,6 +1099,12 @@ function drawDecor(d){
   }else if(d.type==="rock"){
     ctx.rotate(d.rot);ctx.fillStyle="#39413b";ctx.beginPath();ctx.moveTo(-d.r,4);ctx.lineTo(-d.r*.5,-d.r*.8);ctx.lineTo(d.r*.4,-d.r);ctx.lineTo(d.r,-d.r*.2);ctx.lineTo(d.r*.7,d.r*.6);ctx.lineTo(-d.r*.4,d.r);ctx.closePath();ctx.fill();
   }else{
+    if (d.exploded) {
+      ctx.fillStyle = "#231b17";
+      ctx.fillRect(-16, 5, 32, 9);
+      ctx.restore();
+      return;
+    }
     ctx.fillStyle=d.explosive?"#812d23":"#304c44";ctx.fillRect(-14,-24,28,40);
     ctx.strokeStyle="#111";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-14,-15);ctx.lineTo(14,-15);ctx.moveTo(-14,7);ctx.lineTo(14,7);ctx.stroke();
     ctx.fillStyle=d.explosive?"#ffb938":"#65b8a2";ctx.beginPath();ctx.arc(0,-3,5,0,Math.PI*2);ctx.fill();
@@ -879,8 +1137,8 @@ function drawZombie(z){
   const p=worldToScreen(z.x,z.y);
   const bob=Math.sin(z.walk)*(z.type==="runner"?4:2);
   ctx.save();ctx.translate(p.x,p.y+bob);ctx.rotate(z.angle);
-  const scale=z.type==="tank"?1.35:z.type==="runner"?.82:1;ctx.scale(scale,scale);
-  const col=z.hit>0?"#d9ffd3":z.type==="tank"?"#527e48":z.type==="runner"?"#67a845":"#438b49";
+  const scale=z.type==="boss"?1.7:z.type==="tank"?1.35:z.type==="runner"?.82:1;ctx.scale(scale,scale);
+  const col=z.hit>0?"#d9ffd3":z.type==="boss"?"#8f3d66":z.type==="tank"?"#527e48":z.type==="runner"?"#67a845":"#438b49";
   const swing=Math.sin(z.walk)*7;
   ctx.strokeStyle="#283328";ctx.lineWidth=z.type==="tank"?12:8;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(-7,9);ctx.lineTo(-11,25+swing);ctx.moveTo(7,9);ctx.lineTo(11,25-swing);ctx.stroke();
   ctx.strokeStyle=col;ctx.lineWidth=z.type==="tank"?13:8;ctx.beginPath();ctx.moveTo(-12,-2);ctx.lineTo(-28,-4+swing*.25);ctx.moveTo(12,-2);ctx.lineTo(28,4-swing*.25);ctx.stroke();
@@ -900,7 +1158,7 @@ function drawBullets(){
   for(const b of bullets){
     const c=worldToScreen(b.x,b.y),p=worldToScreen(b.px,b.py);
     ctx.strokeStyle="rgba(255,223,105,.65)";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(c.x,c.y);ctx.stroke();
-    ctx.shadowColor="#ffd85c";ctx.shadowBlur=15;ctx.fillStyle="#fff7bd";ctx.beginPath();ctx.arc(c.x,c.y,b.r,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+    ctx.shadowColor=b.color||"#ffd85c";ctx.shadowBlur=15;ctx.fillStyle=b.color||"#fff7bd";ctx.beginPath();ctx.arc(c.x,c.y,b.r,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
   }
 }
 
@@ -952,13 +1210,333 @@ function drawVignette(){
   ctx.fillStyle=g;ctx.fillRect(0,0,innerWidth,innerHeight);
 }
 
+
+function showCoinPopup(worldX, worldY, amount) {
+  const point = worldToScreen(worldX, worldY);
+  const popup = document.createElement("div");
+  popup.className = "coin-popup";
+  popup.textContent = `+${amount} 🪙`;
+  popup.style.left = `${point.x}px`;
+  popup.style.top = `${point.y}px`;
+  document.body.appendChild(popup);
+  setTimeout(() => popup.remove(), 800);
+}
+
+function updateBossBar() {
+  const boss = zombies.find(z => z.type === "boss");
+
+  if (!boss) {
+    UI.bossBar.classList.remove("show");
+    return;
+  }
+
+  UI.bossBar.classList.add("show");
+  UI.bossFill.style.width =
+    Math.max(0, boss.health / boss.maxHealth * 100) + "%";
+}
+
+function drawMiniMap() {
+  const map = UI.miniMap;
+  const w = map.width;
+  const h = map.height;
+
+  miniCtx.clearRect(0, 0, w, h);
+  miniCtx.fillStyle = "rgba(3,8,4,.92)";
+  miniCtx.fillRect(0, 0, w, h);
+
+  const sx = w / WORLD.w;
+  const sy = h / WORLD.h;
+
+  miniCtx.fillStyle = "rgba(110,130,115,.22)";
+  buildings.forEach((building) => {
+    miniCtx.fillRect(
+      building.x * sx,
+      building.y * sy,
+      Math.max(2, building.w * sx),
+      Math.max(2, building.h * sy)
+    );
+  });
+
+  zombies.forEach((zombie) => {
+    miniCtx.fillStyle =
+      zombie.type === "boss" ? "#ff365d" :
+      zombie.type === "tank" ? "#ff8b5c" :
+      "#79ff72";
+
+    miniCtx.beginPath();
+    miniCtx.arc(
+      zombie.x * sx,
+      zombie.y * sy,
+      zombie.type === "boss" ? 4 : 2,
+      0,
+      Math.PI * 2
+    );
+    miniCtx.fill();
+  });
+
+  miniCtx.fillStyle = "#00ecff";
+  miniCtx.beginPath();
+  miniCtx.arc(player.x * sx, player.y * sy, 3.5, 0, Math.PI * 2);
+  miniCtx.fill();
+
+  miniCtx.strokeStyle = "rgba(87,255,109,.5)";
+  miniCtx.strokeRect(
+    camera.x * sx,
+    camera.y * sy,
+    innerWidth * sx,
+    innerHeight * sy
+  );
+}
+
+
+function explodeBarrel(barrel) {
+  if (barrel.exploded) return;
+
+  barrel.exploded = true;
+  barrel.health = 0;
+
+  const radius = 170;
+  const damage = 6;
+
+  const point = worldToScreen(barrel.x, barrel.y);
+  const ring = document.createElement("div");
+  ring.className = "explosion-ring";
+  ring.style.left = `${point.x}px`;
+  ring.style.top = `${point.y}px`;
+  document.body.appendChild(ring);
+  setTimeout(() => ring.remove(), 600);
+
+  burst(barrel.x, barrel.y, "#ffb43f", 65, 360);
+  burst(barrel.x, barrel.y, "#ff4e2e", 35, 260);
+  shake = Math.max(shake, 22);
+  beep(75, .35, "sawtooth", .12);
+
+  for (let i = zombies.length - 1; i >= 0; i--) {
+    const zombie = zombies[i];
+    const distance = Math.hypot(zombie.x - barrel.x, zombie.y - barrel.y);
+
+    if (distance < radius) {
+      zombie.health -= damage * (1 - distance / radius * .45);
+      zombie.hit = .15;
+
+      if (zombie.health <= 0) {
+        killZombie(i, zombie);
+      }
+    }
+  }
+
+  const playerDistance = Math.hypot(player.x - barrel.x, player.y - barrel.y);
+  if (playerDistance < radius * .72) {
+    damagePlayer(Math.ceil(20 * (1 - playerDistance / (radius * .72))));
+  }
+
+  for (const other of decor) {
+    if (
+      other !== barrel &&
+      other.type === "barrel" &&
+      other.explosive &&
+      !other.exploded &&
+      Math.hypot(other.x - barrel.x, other.y - barrel.y) < 145
+    ) {
+      setTimeout(() => explodeBarrel(other), 120);
+    }
+  }
+}
+
+function beginWaveBreak() {
+  waveBreakActive = true;
+  paused = true;
+  unlockMouse();
+
+  UI.completeWave.textContent = wave;
+  UI.completeKills.textContent = waveKills;
+  UI.completeCoins.textContent = waveCoins;
+  UI.completeScore.textContent = score;
+  UI.waveComplete.classList.remove("hidden");
+}
+
+function continueToNextWave() {
+  wave++;
+  waveKills = 0;
+  waveCoins = 0;
+  nextWaveKillTarget = 12 + Math.floor(wave * 1.5);
+  spawnDelay = Math.max(.34, 1.2 - wave * .06);
+  waveBreakActive = false;
+  paused = false;
+
+  UI.waveComplete.classList.add("hidden");
+  UI.shop.classList.add("hidden");
+
+  showWave(wave);
+  lastTime = performance.now();
+  raf = requestAnimationFrame(loop);
+
+  if (!isMobile()) {
+    setTimeout(lockMouse, 60);
+  }
+}
+
+function openShop() {
+  UI.waveComplete.classList.add("hidden");
+  UI.shop.classList.remove("hidden");
+  updateShopUI();
+}
+
+function closeShopAndContinue() {
+  UI.shop.classList.add("hidden");
+  continueToNextWave();
+}
+
+UI.continueWaveBtn.addEventListener("click", continueToNextWave);
+UI.openShopBtn.addEventListener("click", openShop);
+UI.closeShopBtn.addEventListener("click", closeShopAndContinue);
+
+const upgradeConfig = {
+  pistolDamage: { base: 40, step: 30, max: 8 },
+  smgRate: { base: 60, step: 38, max: 8 },
+  shotgunPower: { base: 75, step: 45, max: 8 },
+  maxHealth: { base: 50, step: 35, max: 7 },
+  armor: { base: 55, step: 40, max: 6 },
+  speed: { base: 65, step: 42, max: 7 }
+};
+
+function upgradeCost(name) {
+  const config = upgradeConfig[name];
+  return config.base + (upgrades[name] - (name === "armor" ? 0 : 1)) * config.step;
+}
+
+function buyUpgrade(name) {
+  const config = upgradeConfig[name];
+  if (!config || upgrades[name] >= config.max) return;
+
+  const cost = upgradeCost(name);
+  if (coins < cost) {
+    beep(120, .12, "square", .04);
+    return;
+  }
+
+  coins -= cost;
+  upgrades[name]++;
+
+  localStorage.setItem("potaraZombieCoins", String(coins));
+  localStorage.setItem("potaraZombieUpgrades", JSON.stringify(upgrades));
+
+  beep(720, .15, "triangle", .05);
+  updateShopUI();
+  updateUI();
+}
+
+document.querySelectorAll("[data-upgrade]").forEach((button) => {
+  button.addEventListener("click", () => {
+    buyUpgrade(button.dataset.upgrade);
+  });
+});
+
+function updateShopUI() {
+  UI.shopCoins.textContent = coins;
+
+  const fields = {
+    pistolDamage: ["pistolDamageLevel", "pistolDamageCost"],
+    smgRate: ["smgRateLevel", "smgRateCost"],
+    shotgunPower: ["shotgunPowerLevel", "shotgunPowerCost"],
+    maxHealth: ["maxHealthLevel", "maxHealthCost"],
+    armor: ["armorLevel", "armorCost"],
+    speed: ["speedLevel", "speedCost"]
+  };
+
+  for (const [name, ids] of Object.entries(fields)) {
+    const [levelId, costId] = ids;
+    const maxed = upgrades[name] >= upgradeConfig[name].max;
+
+    $(levelId).textContent = `Level ${upgrades[name]}`;
+    $(costId).textContent = maxed ? "MAX" : upgradeCost(name);
+
+    const button = document.querySelector(`[data-upgrade="${name}"]`);
+    button.disabled = maxed;
+  }
+}
+
+function updateBossAttacks(dt) {
+  const boss = zombies.find(z => z.type === "boss");
+
+  if (!boss || waveBreakActive || paused) {
+    bossAttackTimer = 0;
+    UI.bossBar.classList.remove("rage");
+    return;
+  }
+
+  const rage = boss.health / boss.maxHealth < .35;
+  UI.bossBar.classList.toggle("rage", rage);
+
+  bossAttackTimer += dt;
+
+  const attackDelay = rage ? 2.1 : 3.4;
+
+  if (bossAttackTimer < attackDelay) return;
+  bossAttackTimer = 0;
+
+  const distance = Math.hypot(player.x - boss.x, player.y - boss.y);
+
+  if (distance < 260) {
+    bossSlam(boss);
+  } else {
+    bossCharge(boss);
+  }
+}
+
+function bossSlam(boss) {
+  burst(boss.x, boss.y, "#ff4f88", 45, 280);
+  shake = Math.max(shake, 20);
+  beep(70, .3, "sawtooth", .1);
+
+  if (Math.hypot(player.x - boss.x, player.y - boss.y) < 240) {
+    damagePlayer(18);
+  }
+
+  for (let i = 0; i < 3; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const x = clamp(boss.x + Math.cos(angle) * 120, 50, WORLD.w - 50);
+    const y = clamp(boss.y + Math.sin(angle) * 120, 50, WORLD.h - 50);
+
+    zombies.push({
+      type: "runner",
+      x,
+      y,
+      r: 20,
+      speed: 155 * (1 + wave * .05),
+      health: 2,
+      maxHealth: 2,
+      damage: 7,
+      hit: 0,
+      attack: 0,
+      walk: Math.random() * 10,
+      angle: 0
+    });
+  }
+}
+
+function bossCharge(boss) {
+  const angle = Math.atan2(player.y - boss.y, player.x - boss.x);
+
+  boss.x = clamp(boss.x + Math.cos(angle) * 150, boss.r, WORLD.w - boss.r);
+  boss.y = clamp(boss.y + Math.sin(angle) * 150, boss.r, WORLD.h - boss.r);
+
+  burst(boss.x, boss.y, "#ff784f", 24, 220);
+  shake = Math.max(shake, 11);
+  beep(95, .16, "square", .06);
+}
+
 /* UI/game over */
 function updateUI(){
   const hp=player.health/player.maxHealth;
   UI.healthFill.style.width=hp*100+"%";
   UI.healthText.textContent=Math.ceil(player.health)+" / "+player.maxHealth;
   UI.armorText.textContent="ARMOR: "+Math.ceil(player.armor);
-  UI.ammoText.textContent=ammo;
+  UI.weaponName.textContent = WEAPONS[currentWeapon].name;
+  UI.ammoText.textContent = ammo;
+  UI.reserveAmmoText.textContent = "/ ∞";
+  UI.coins.textContent = coins;
+  if (UI.shopCoins) UI.shopCoins.textContent = coins;
   UI.kills.textContent=kills;
   UI.score.textContent=score;
   UI.wave.textContent=wave;
@@ -990,6 +1568,8 @@ function endGame(){
   UI.finalWave.textContent=wave;
   UI.finalBest.textContent=highScore;
   UI.best.textContent=highScore;
+  UI.waveComplete.classList.add("hidden");
+  UI.shop.classList.add("hidden");
   UI.over.classList.remove("hidden");
 }
 
