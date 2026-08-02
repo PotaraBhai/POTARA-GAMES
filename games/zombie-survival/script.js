@@ -57,7 +57,18 @@ const UI = {
   openShopBtn: $("openShopButton"),
   shop: $("shopScreen"),
   shopCoins: $("shopCoins"),
-  closeShopBtn: $("closeShopButton")
+  closeShopBtn: $("closeShopButton"),
+  inventory: $("inventoryScreen"),
+  inventoryGrid: $("inventoryGrid"),
+  closeInventoryBtn: $("closeInventoryButton"),
+  useItemBtn: $("useItemButton"),
+  selectedItemName: $("selectedItemName"),
+  selectedItemDescription: $("selectedItemDescription"),
+  interactPrompt: $("interactPrompt"),
+  interactText: $("interactText"),
+  missionText: $("missionText"),
+  inventoryBtn: $("inventoryButton"),
+  interactBtn: $("interactButton")
 };
 
 const WORLD = { w: 3200, h: 2400 };
@@ -144,6 +155,63 @@ let waveCoins = 0;
 let waveBreakActive = false;
 let nextWaveKillTarget = 12;
 let bossAttackTimer = 0;
+let inventoryOpen = false;
+let selectedInventoryItem = null;
+let interior = null;
+let outsidePosition = null;
+let nearbyInteraction = null;
+let buildingsSearched = 0;
+
+const inventory = JSON.parse(
+  localStorage.getItem("potaraZombieInventory") ||
+  JSON.stringify({
+    medkit: 1,
+    bandage: 2,
+    armor: 0,
+    food: 1,
+    ammo: 2,
+    key: 0
+  })
+);
+
+const ITEM_DATA = {
+  medkit: {
+    name: "MEDKIT",
+    icon: "🧰",
+    description: "Restores 50 health.",
+    usable: true
+  },
+  bandage: {
+    name: "BANDAGE",
+    icon: "🩹",
+    description: "Restores 20 health.",
+    usable: true
+  },
+  armor: {
+    name: "ARMOR PLATE",
+    icon: "🛡️",
+    description: "Adds 25 armor.",
+    usable: true
+  },
+  food: {
+    name: "FOOD",
+    icon: "🥫",
+    description: "Restores 10 health.",
+    usable: true
+  },
+  ammo: {
+    name: "AMMO BOX",
+    icon: "📦",
+    description: "Refills all weapon magazines.",
+    usable: true
+  },
+  key: {
+    name: "CITY KEY",
+    icon: "🗝️",
+    description: "A mysterious key found inside the infected city.",
+    usable: false
+  }
+};
 
 const upgrades = JSON.parse(
   localStorage.getItem("potaraZombieUpgrades") ||
@@ -256,6 +324,17 @@ function createWorld() {
     {x:1710,y:1810,w:510,h:320,h3:88},{x:2550,y:1740,w:400,h:350,h3:68}
   ];
 
+  buildings.forEach((building, index) => {
+    building.id = index;
+    building.type =
+      index % 4 === 0 ? "hospital" :
+      index % 4 === 1 ? "house" :
+      index % 4 === 2 ? "store" : "police";
+    building.doorX = building.x + building.w / 2;
+    building.doorY = building.y + building.h + 18;
+    building.searched = false;
+  });
+
   decor = [];
   for (let i = 0; i < 85; i++) {
     const p = safePosition(55);
@@ -358,6 +437,12 @@ function resetGame() {
   waveBreakActive = false;
   nextWaveKillTarget = 12;
   bossAttackTimer = 0;
+  inventoryOpen = false;
+  interior = null;
+  outsidePosition = null;
+  nearbyInteraction = null;
+  buildingsSearched = 0;
+  UI.inventory.classList.add("hidden");
   createWorld();
   cameraInstant();
   updateUI();
@@ -421,6 +506,15 @@ addEventListener("keydown", (e) => {
     shoot();
   }
   if (e.key.toLowerCase() === "r") startReload();
+
+  if (e.key.toLowerCase() === "e") {
+    interact();
+  }
+
+  if (e.key === "Tab" || e.key.toLowerCase() === "i") {
+    e.preventDefault();
+    toggleInventory();
+  }
 });
 addEventListener("keyup", (e) => keys[e.key.toLowerCase()] = false);
 
@@ -476,7 +570,7 @@ document.addEventListener("pointerlockchange", () => {
   pointerLocked = document.pointerLockElement === canvas;
   document.body.classList.toggle("pointer-locked", pointerLocked);
 
-  if (!pointerLocked && running && !paused && !isMobile()) {
+  if (!pointerLocked && running && !paused && !inventoryOpen && !isMobile()) {
     pauseGame(false);
   }
 });
@@ -575,6 +669,337 @@ if (UI.weaponBtn) {
     const next = order[(order.indexOf(currentWeapon) + 1) % order.length];
     selectWeapon(next);
   });
+}
+
+
+/* Inventory + interaction */
+UI.inventoryBtn.addEventListener("click", toggleInventory);
+UI.interactBtn.addEventListener("click", interact);
+UI.closeInventoryBtn.addEventListener("click", closeInventory);
+UI.useItemBtn.addEventListener("click", useSelectedItem);
+
+function saveInventory() {
+  localStorage.setItem("potaraZombieInventory", JSON.stringify(inventory));
+}
+
+function toggleInventory() {
+  if (!running || UI.shop && !UI.shop.classList.contains("hidden")) return;
+
+  if (inventoryOpen) {
+    closeInventory();
+  } else {
+    openInventory();
+  }
+}
+
+function openInventory() {
+  if (!running || paused && !waveBreakActive) return;
+
+  inventoryOpen = true;
+  paused = true;
+  unlockMouse();
+  renderInventory();
+  UI.inventory.classList.remove("hidden");
+}
+
+function closeInventory() {
+  if (!inventoryOpen) return;
+
+  inventoryOpen = false;
+  UI.inventory.classList.add("hidden");
+
+  if (!waveBreakActive) {
+    paused = false;
+    lastTime = performance.now();
+    raf = requestAnimationFrame(loop);
+
+    if (!isMobile()) {
+      setTimeout(lockMouse, 60);
+    }
+  }
+}
+
+function renderInventory() {
+  UI.inventoryGrid.innerHTML = "";
+
+  const entries = Object.keys(ITEM_DATA);
+
+  for (let i = 0; i < 18; i++) {
+    const key = entries[i] || null;
+    const slot = document.createElement("button");
+    slot.className = "inventory-slot";
+
+    if (!key) {
+      slot.classList.add("empty");
+      slot.innerHTML = '<span class="item-icon">＋</span>';
+      slot.disabled = true;
+    } else {
+      const item = ITEM_DATA[key];
+      const count = inventory[key] || 0;
+
+      if (count <= 0) {
+        slot.classList.add("empty");
+      }
+
+      if (selectedInventoryItem === key) {
+        slot.classList.add("selected");
+      }
+
+      slot.innerHTML = `
+        <span class="item-icon">${item.icon}</span>
+        <span class="item-count">${count}</span>
+      `;
+
+      slot.addEventListener("click", () => {
+        selectedInventoryItem = key;
+        renderInventory();
+        updateSelectedItemInfo();
+      });
+    }
+
+    UI.inventoryGrid.appendChild(slot);
+  }
+
+  updateSelectedItemInfo();
+}
+
+function updateSelectedItemInfo() {
+  if (!selectedInventoryItem) {
+    UI.selectedItemName.textContent = "SELECT AN ITEM";
+    UI.selectedItemDescription.textContent =
+      "Loot buildings and crates to collect survival supplies.";
+    UI.useItemBtn.disabled = true;
+    return;
+  }
+
+  const item = ITEM_DATA[selectedInventoryItem];
+  const count = inventory[selectedInventoryItem] || 0;
+
+  UI.selectedItemName.textContent = item.name;
+  UI.selectedItemDescription.textContent = item.description;
+  UI.useItemBtn.disabled = !item.usable || count <= 0;
+}
+
+function useSelectedItem() {
+  if (!selectedInventoryItem || (inventory[selectedInventoryItem] || 0) <= 0) return;
+
+  let used = false;
+
+  if (selectedInventoryItem === "medkit" && player.health < player.maxHealth) {
+    player.health = Math.min(player.maxHealth, player.health + 50);
+    used = true;
+  }
+
+  if (selectedInventoryItem === "bandage" && player.health < player.maxHealth) {
+    player.health = Math.min(player.maxHealth, player.health + 20);
+    used = true;
+  }
+
+  if (selectedInventoryItem === "food" && player.health < player.maxHealth) {
+    player.health = Math.min(player.maxHealth, player.health + 10);
+    used = true;
+  }
+
+  if (selectedInventoryItem === "armor" && player.armor < 75) {
+    player.armor = Math.min(75, player.armor + 25);
+    used = true;
+  }
+
+  if (selectedInventoryItem === "ammo") {
+    for (const name of Object.keys(weaponAmmo)) {
+      weaponAmmo[name] = WEAPONS[name].mag;
+    }
+    ammo = weaponAmmo[currentWeapon];
+    used = true;
+  }
+
+  if (!used) {
+    beep(120, .1, "square", .035);
+    return;
+  }
+
+  inventory[selectedInventoryItem]--;
+  saveInventory();
+  beep(680, .13, "triangle", .045);
+  renderInventory();
+  updateUI();
+}
+
+function addLoot(type, amount = 1) {
+  inventory[type] = (inventory[type] || 0) + amount;
+  saveInventory();
+
+  const toast = document.createElement("div");
+  toast.className = "loot-toast";
+  toast.textContent = `FOUND: ${ITEM_DATA[type].icon} ${ITEM_DATA[type].name} ×${amount}`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 1000);
+}
+
+function randomLoot() {
+  const table = [
+    ["bandage", 28],
+    ["food", 24],
+    ["ammo", 20],
+    ["armor", 13],
+    ["medkit", 11],
+    ["key", 4]
+  ];
+
+  let roll = Math.random() * 100;
+
+  for (const [type, chance] of table) {
+    roll -= chance;
+    if (roll <= 0) return type;
+  }
+
+  return "bandage";
+}
+
+function updateInteraction() {
+  nearbyInteraction = null;
+
+  if (interior) {
+    const exitDistance = Math.hypot(
+      player.x - interior.exitX,
+      player.y - interior.exitY
+    );
+
+    if (exitDistance < 80) {
+      nearbyInteraction = { type: "exit" };
+      showInteraction("EXIT BUILDING");
+      return;
+    }
+
+    for (const crate of interior.crates) {
+      if (
+        !crate.opened &&
+        Math.hypot(player.x - crate.x, player.y - crate.y) < 70
+      ) {
+        nearbyInteraction = { type: "crate", crate };
+        showInteraction("SEARCH LOOT CRATE");
+        return;
+      }
+    }
+
+    hideInteraction();
+    return;
+  }
+
+  for (const building of buildings) {
+    const distance = Math.hypot(
+      player.x - building.doorX,
+      player.y - building.doorY
+    );
+
+    if (distance < 85) {
+      nearbyInteraction = { type: "building", building };
+      showInteraction(`ENTER ${building.type.toUpperCase()}`);
+      return;
+    }
+  }
+
+  hideInteraction();
+}
+
+function showInteraction(text) {
+  UI.interactText.textContent = text;
+  UI.interactPrompt.classList.add("show");
+}
+
+function hideInteraction() {
+  UI.interactPrompt.classList.remove("show");
+}
+
+function interact() {
+  if (!running || paused || inventoryOpen || !nearbyInteraction) return;
+
+  if (nearbyInteraction.type === "building") {
+    enterBuilding(nearbyInteraction.building);
+  } else if (nearbyInteraction.type === "exit") {
+    exitBuilding();
+  } else if (nearbyInteraction.type === "crate") {
+    searchCrate(nearbyInteraction.crate);
+  }
+}
+
+function enterBuilding(building) {
+  outsidePosition = {
+    x: building.doorX,
+    y: building.doorY + 70,
+    cameraX: camera.x,
+    cameraY: camera.y
+  };
+
+  interior = {
+    building,
+    width: 1000,
+    height: 700,
+    exitX: 500,
+    exitY: 645,
+    crates: [
+      { x: 190, y: 180, opened: false },
+      { x: 785, y: 180, opened: false },
+      { x: 500, y: 350, opened: false }
+    ]
+  };
+
+  player.x = interior.exitX;
+  player.y = interior.exitY - 75;
+  zombies = [];
+  bullets = [];
+  particles = [];
+
+  camera.x = 0;
+  camera.y = 0;
+  camera.tx = 0;
+  camera.ty = 0;
+
+  if (!building.searched) {
+    building.searched = true;
+    buildingsSearched++;
+    UI.missionText.textContent =
+      buildingsSearched >= 2
+        ? "Find the City Key inside a loot crate"
+        : "Search another building for supplies";
+  }
+
+  beep(380, .13, "square", .035);
+}
+
+function exitBuilding() {
+  if (!interior || !outsidePosition) return;
+
+  player.x = outsidePosition.x;
+  player.y = outsidePosition.y;
+  interior = null;
+  outsidePosition = null;
+  cameraInstant();
+  hideInteraction();
+  beep(310, .12, "square", .03);
+}
+
+function searchCrate(crate) {
+  if (crate.opened) return;
+
+  crate.opened = true;
+
+  const lootCount = Math.random() > .72 ? 2 : 1;
+
+  for (let i = 0; i < lootCount; i++) {
+    const type = randomLoot();
+    addLoot(type, 1);
+
+    if (type === "key") {
+      UI.missionText.textContent = "City Key found — survive the infected city";
+    }
+  }
+
+  coins += 3;
+  localStorage.setItem("potaraZombieCoins", String(coins));
+  burst(crate.x, crate.y, "#ffe45c", 18, 150);
+  beep(760, .14, "triangle", .05);
+  updateUI();
 }
 
 /* Audio */
@@ -799,15 +1224,16 @@ function update(dt) {
   updateReload(dt);
   updatePlayer(dt);
   updateBullets(dt);
-  updateZombies(dt);
+  if (!interior) updateZombies(dt);
   updateParticles(dt);
   updatePickups(dt);
   updateCamera(dt);
   updateBossBar();
   updateBossAttacks(dt);
+  updateInteraction();
 
-  if (!waveBreakActive) spawnTimer += dt;
-  if (!waveBreakActive && spawnTimer >= spawnDelay) {
+  if (!waveBreakActive && !interior) spawnTimer += dt;
+  if (!waveBreakActive && !interior && spawnTimer >= spawnDelay) {
     spawnTimer = 0;
     spawnZombie();
   }
@@ -824,22 +1250,55 @@ function update(dt) {
 
 function updatePlayer(dt) {
   let mx = 0, my = 0;
+
   if (keys.w || keys.arrowup) my -= 1;
   if (keys.s || keys.arrowdown) my += 1;
   if (keys.a || keys.arrowleft) mx -= 1;
   if (keys.d || keys.arrowright) mx += 1;
-  mx += joystick.x; my += joystick.y;
 
-  const len = Math.hypot(mx,my);
+  mx += joystick.x;
+  my += joystick.y;
+
+  const len = Math.hypot(mx, my);
+
   if (len > 0) {
-    mx /= len; my /= len;
+    mx /= len;
+    my /= len;
     player.walk += dt * 10;
   }
 
-  const ox = player.x, oy = player.y;
-  player.x = clamp(player.x + mx * player.speed * dt, player.r, WORLD.w - player.r);
-  player.y = clamp(player.y + my * player.speed * dt, player.r, WORLD.h - player.r);
-  collideBuildings(player,ox,oy,player.r);
+  const ox = player.x;
+  const oy = player.y;
+
+  player.x += mx * player.speed * dt;
+  player.y += my * player.speed * dt;
+
+  if (interior) {
+    player.x = clamp(player.x, player.r + 35, interior.width - player.r - 35);
+    player.y = clamp(player.y, player.r + 55, interior.height - player.r - 35);
+
+    for (const obstacle of [
+      { x: 320, y: 250, w: 360, h: 85 },
+      { x: 120, y: 455, w: 230, h: 70 },
+      { x: 650, y: 455, w: 230, h: 70 }
+    ]) {
+      const cx = clamp(player.x, obstacle.x, obstacle.x + obstacle.w);
+      const cy = clamp(player.y, obstacle.y, obstacle.y + obstacle.h);
+      const dx = player.x - cx;
+      const dy = player.y - cy;
+
+      if (dx * dx + dy * dy < player.r * player.r) {
+        player.x = ox;
+        player.y = oy;
+      }
+    }
+
+    return;
+  }
+
+  player.x = clamp(player.x, player.r, WORLD.w - player.r);
+  player.y = clamp(player.y, player.r, WORLD.h - player.r);
+  collideBuildings(player, ox, oy, player.r);
   collectPickups();
 }
 
@@ -978,8 +1437,11 @@ function updateParticles(dt) {
 
 /* Camera */
 function updateCamera(dt) {
-  camera.tx = clamp(player.x - innerWidth/2,0,Math.max(0,WORLD.w-innerWidth));
-  camera.ty = clamp(player.y - innerHeight/2,0,Math.max(0,WORLD.h-innerHeight));
+  const activeWidth = interior ? interior.width : WORLD.w;
+  const activeHeight = interior ? interior.height : WORLD.h;
+
+  camera.tx = clamp(player.x - innerWidth/2,0,Math.max(0,activeWidth-innerWidth));
+  camera.ty = clamp(player.y - innerHeight/2,0,Math.max(0,activeHeight-innerHeight));
   const smooth = 1 - Math.pow(.001,dt);
   camera.x += (camera.tx-camera.x)*smooth;
   camera.y += (camera.ty-camera.y)*smooth;
@@ -995,6 +1457,15 @@ function cameraInstant() {
 /* Draw */
 function draw() {
   ctx.clearRect(0,0,innerWidth,innerHeight);
+
+  if (interior) {
+    drawInterior();
+    drawParticles();
+    drawLighting();
+    drawVignette();
+    return;
+  }
+
   drawGround();
   drawRoads();
 
@@ -1364,6 +1835,8 @@ function continueToNextWave() {
   waveBreakActive = false;
   paused = false;
 
+  UI.inventory.classList.add("hidden");
+  inventoryOpen = false;
   UI.waveComplete.classList.add("hidden");
   UI.shop.classList.add("hidden");
 
@@ -1524,6 +1997,100 @@ function bossCharge(boss) {
   burst(boss.x, boss.y, "#ff784f", 24, 220);
   shake = Math.max(shake, 11);
   beep(95, .16, "square", .06);
+}
+
+
+function drawInterior() {
+  ctx.fillStyle = "#090d0a";
+  ctx.fillRect(0, 0, innerWidth, innerHeight);
+
+  const origin = worldToScreen(0, 0);
+
+  const floor = ctx.createLinearGradient(0, 0, 0, innerHeight);
+  floor.addColorStop(0, "#202820");
+  floor.addColorStop(1, "#101611");
+  ctx.fillStyle = floor;
+  ctx.fillRect(origin.x, origin.y, interior.width, interior.height);
+
+  ctx.strokeStyle = "#3b493d";
+  ctx.lineWidth = 35;
+  ctx.strokeRect(
+    origin.x + 18,
+    origin.y + 18,
+    interior.width - 36,
+    interior.height - 36
+  );
+
+  ctx.fillStyle = "#1b241d";
+  ctx.fillRect(
+    origin.x + 320,
+    origin.y + 250,
+    360,
+    85
+  );
+
+  ctx.fillStyle = "#222b24";
+  ctx.fillRect(
+    origin.x + 120,
+    origin.y + 455,
+    230,
+    70
+  );
+  ctx.fillRect(
+    origin.x + 650,
+    origin.y + 455,
+    230,
+    70
+  );
+
+  ctx.fillStyle = "#1c231d";
+  for (let x = 70; x < interior.width; x += 95) {
+    for (let y = 75; y < interior.height; y += 95) {
+      ctx.fillRect(origin.x + x, origin.y + y, 3, 3);
+    }
+  }
+
+  for (const crate of interior.crates) {
+    drawInteriorCrate(crate);
+  }
+
+  const exit = worldToScreen(interior.exitX, interior.exitY);
+
+  ctx.fillStyle = "rgba(87,255,109,.12)";
+  ctx.fillRect(exit.x - 55, exit.y - 18, 110, 36);
+
+  ctx.strokeStyle = "rgba(87,255,109,.55)";
+  ctx.strokeRect(exit.x - 55, exit.y - 18, 110, 36);
+
+  ctx.fillStyle = varColor("#57ff6d");
+  ctx.font = '700 9px "Orbitron"';
+  ctx.textAlign = "center";
+  ctx.fillText("EXIT", exit.x, exit.y + 4);
+
+  drawPlayer();
+}
+
+function drawInteriorCrate(crate) {
+  const point = worldToScreen(crate.x, crate.y);
+
+  ctx.save();
+  ctx.translate(point.x, point.y);
+
+  ctx.fillStyle = crate.opened ? "#27241c" : "#4b3920";
+  ctx.fillRect(-25, -18, 50, 36);
+
+  ctx.strokeStyle = crate.opened ? "#403a2b" : "#c8943e";
+  ctx.lineWidth = 3;
+  ctx.strokeRect(-25, -18, 50, 36);
+
+  ctx.fillStyle = crate.opened ? "#171713" : "#ffe45c";
+  ctx.fillRect(-4, -5, 8, 10);
+
+  ctx.restore();
+}
+
+function varColor(value) {
+  return value;
 }
 
 /* UI/game over */
