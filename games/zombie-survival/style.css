@@ -170,3 +170,284 @@ a{text-decoration:none}
   #shootButton{width:55px;height:55px}
   #reloadButton{width:39px;height:39px}
 }
+
+
+/* =========================================
+   V2.1 — MOUSE LOCK + CROSSHAIR
+========================================= */
+
+#gameCanvas {
+  cursor: crosshair;
+}
+
+body.pointer-locked #gameCanvas {
+  cursor: none;
+}
+
+#crosshair {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  z-index: 19;
+  width: 30px;
+  height: 30px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transition: opacity .15s ease;
+  filter: drop-shadow(0 0 5px rgba(87,255,109,.8));
+}
+
+body.pointer-locked #crosshair {
+  opacity: 1;
+}
+
+#crosshair span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: block;
+  background: #b7ff74;
+  border-radius: 8px;
+  transform: translate(-50%, -50%);
+}
+
+#crosshair span:first-child {
+  width: 22px;
+  height: 2px;
+}
+
+#crosshair span:last-child {
+  width: 2px;
+  height: 22px;
+}
+
+@media (pointer: coarse), (max-width: 900px) {
+  #crosshair {
+    display: none;
+  }
+
+  #gameCanvas {
+    cursor: default;
+  }
+}
+
+
+/* =========================================
+   V2.2 — MOBILE LANDSCAPE START-SCREEN FIX
+========================================= */
+
+.start-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.secondary-btn {
+  min-height: 55px;
+  padding: 0 20px;
+  border: 1px solid rgba(87, 255, 109, .35);
+  border-radius: 10px;
+  background: rgba(87, 255, 109, .07);
+  color: var(--green);
+  font: 800 9px "Orbitron";
+  cursor: pointer;
+}
+
+.screen-overlay,
+.overlay {
+  min-height: 100dvh;
+}
+
+.panel {
+  max-height: calc(100dvh - 28px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(87,255,109,.45) transparent;
+}
+
+.panel::-webkit-scrollbar {
+  width: 5px;
+}
+
+.panel::-webkit-scrollbar-thumb {
+  border-radius: 10px;
+  background: rgba(87,255,109,.45);
+}
+
+/* Mobile landscape: complete start screen must fit even with browser toolbar */
+@media (orientation: landscape) and (pointer: coarse) {
+  .overlay {
+    align-items: center;
+    padding: 6px 10px;
+  }
+
+  .panel {
+    width: min(760px, 96vw);
+    max-height: calc(100dvh - 12px);
+    padding: 12px 16px 10px;
+    border-radius: 16px;
+  }
+
+  .panel .bio-logo.small {
+    width: 38px;
+    height: 38px;
+    margin: 0 auto 5px;
+    border-width: 1px;
+    font-size: 21px;
+    box-shadow: 0 0 16px rgba(87,255,109,.22);
+    animation: none;
+  }
+
+  .panel .eyebrow {
+    margin-bottom: 3px;
+    font-size: 5px;
+    letter-spacing: 2px;
+  }
+
+  .panel h2 {
+    font-size: clamp(25px, 6.2vw, 39px);
+    line-height: .88;
+  }
+
+  .panel h2 span {
+    margin-top: 4px;
+  }
+
+  .panel .desc {
+    max-width: 620px;
+    margin: 7px auto;
+    font-size: 10px;
+    line-height: 1.25;
+  }
+
+  .controls-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    margin: 7px 0;
+  }
+
+  .controls-grid div {
+    min-height: 44px;
+    padding: 4px 3px;
+    border-radius: 7px;
+    font-size: 14px;
+  }
+
+  .controls-grid b {
+    margin-top: 1px;
+    font-size: 4.5px;
+  }
+
+  .controls-grid small {
+    font-size: 6px;
+    line-height: 1;
+  }
+
+  .start-actions {
+    gap: 6px;
+  }
+
+  .start-actions .main-btn,
+  .start-actions .secondary-btn {
+    width: auto;
+    min-width: 170px;
+    min-height: 34px;
+    padding: 0 12px;
+    font-size: 6px;
+  }
+
+  .panel .version {
+    margin-top: 5px;
+    font-size: 6px;
+    letter-spacing: 1px;
+  }
+
+  /* Pause and Game Over also stay inside the phone viewport */
+  .panel.compact {
+    width: min(520px, 94vw);
+    padding: 16px;
+  }
+
+  .panel.compact .final-grid {
+    margin: 10px 0;
+  }
+
+  .panel.compact .main-btn {
+    min-height: 38px;
+  }
+
+  .exit-link {
+    margin-top: 8px;
+    font-size: 9px;
+  }
+}
+
+/* Very short phone screens, e.g. browser UI visible */
+@media (orientation: landscape) and (pointer: coarse) and (max-height: 390px) {
+  .overlay {
+    padding: 3px 7px;
+  }
+
+  .panel {
+    max-height: calc(100dvh - 6px);
+    padding: 7px 12px 6px;
+  }
+
+  .panel .bio-logo.small {
+    display: none;
+  }
+
+  .panel .eyebrow {
+    margin-bottom: 2px;
+  }
+
+  .panel h2 {
+    font-size: clamp(23px, 5.5vw, 34px);
+  }
+
+  .panel .desc {
+    margin: 4px auto;
+    font-size: 8px;
+  }
+
+  .controls-grid {
+    margin: 4px 0;
+  }
+
+  .controls-grid div {
+    min-height: 35px;
+    padding: 2px;
+    font-size: 11px;
+  }
+
+  .controls-grid b {
+    font-size: 4px;
+  }
+
+  .controls-grid small {
+    font-size: 5px;
+  }
+
+  .start-actions .main-btn,
+  .start-actions .secondary-btn {
+    min-height: 29px;
+    min-width: 145px;
+    font-size: 5px;
+  }
+
+  .panel .version {
+    display: none;
+  }
+}
+
+/* On a narrow landscape phone, keep both buttons visible */
+@media (orientation: landscape) and (pointer: coarse) and (max-width: 740px) {
+  .start-actions .main-btn,
+  .start-actions .secondary-btn {
+    min-width: 0;
+    flex: 1;
+  }
+}
