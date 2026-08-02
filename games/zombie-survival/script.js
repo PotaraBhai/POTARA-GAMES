@@ -4,6 +4,7 @@ const $ = (id) => document.getElementById(id);
 const canvas = $("gameCanvas");
 const ctx = canvas.getContext("2d");
 const miniCtx = $("miniMap").getContext("2d");
+const worldMapCtx = $("worldMapCanvas").getContext("2d");
 
 const UI = {
   loader: $("gameLoader"),
@@ -82,7 +83,15 @@ const UI = {
   closeNpcShopBtn: $("closeNpcShopButton"),
   questScreen: $("questScreen"),
   questList: $("questList"),
-  closeQuestBtn: $("closeQuestButton")
+  closeQuestBtn: $("closeQuestButton"),
+  mapBtn: $("mapButton"),
+  flashlightBtn: $("flashlightButton"),
+  timeStatus: $("timeStatus"),
+  weatherStatus: $("weatherStatus"),
+  worldMap: $("worldMapScreen"),
+  worldMapCanvas: $("worldMapCanvas"),
+  closeWorldMapBtn: $("closeWorldMapButton"),
+  clearWaypointBtn: $("clearWaypointButton")
 };
 
 const WORLD = { w: 3200, h: 2400 };
@@ -177,6 +186,16 @@ let nearbyInteraction = null;
 let buildingsSearched = 0;
 let cash = Number(localStorage.getItem("potaraZombieCash") || 100);
 let currentNpcShop = null;
+let worldMapOpen = false;
+let flashlightOn = true;
+let worldMinutes = 8 * 60;
+let dayNumber = 1;
+let weather = "clear";
+let weatherTimer = 0;
+let thunderTimer = 0;
+let waypoint = JSON.parse(
+  localStorage.getItem("potaraZombieWaypoint") || "null"
+);
 
 const QUESTS = [
   {
@@ -413,6 +432,17 @@ function startLoader() {
 }
 addEventListener("load", () => setTimeout(startLoader, 250));
 
+
+
+const rainOverlay = document.createElement("div");
+rainOverlay.className = "rain-overlay";
+document.body.appendChild(rainOverlay);
+
+const thunderFlash = document.createElement("div");
+thunderFlash.className = "thunder-flash";
+document.body.appendChild(thunderFlash);
+
+let waypointLabel = null;
 
 const BUILDING_DATA = {
   hospital: {
@@ -1147,6 +1177,269 @@ function closeNpcShop() {
 
 UI.closeNpcShopBtn.addEventListener("click", closeNpcShop);
 
+
+/* V5.3 map + navigation */
+const MAP_SYMBOLS = {
+  hospital: { symbol: "H", color: "#ff4c5f" },
+  police: { symbol: "P", color: "#4d8fff" },
+  weaponShop: { symbol: "G", color: "#ff9d42" },
+  generalStore: { symbol: "S", color: "#ffe45c" },
+  safeHouse: { symbol: "⌂", color: "#57ff6d" },
+  gasStation: { symbol: "⛽", color: "#ff6252" },
+  warehouse: { symbol: "W", color: "#b8c0ba" },
+  questCenter: { symbol: "!", color: "#c997ff" },
+  house: { symbol: "⌂", color: "#7edc8a" }
+};
+
+function toggleWorldMap() {
+  if (!running) return;
+
+  if (worldMapOpen) {
+    closeWorldMap();
+  } else {
+    openWorldMap();
+  }
+}
+
+function openWorldMap() {
+  worldMapOpen = true;
+  paused = true;
+  unlockMouse();
+  drawExpandedMap();
+  UI.worldMap.classList.remove("hidden");
+}
+
+function closeWorldMap() {
+  if (!worldMapOpen) return;
+
+  worldMapOpen = false;
+  UI.worldMap.classList.add("hidden");
+
+  if (!waveBreakActive && !inventoryOpen) {
+    paused = false;
+    lastTime = performance.now();
+    raf = requestAnimationFrame(loop);
+
+    if (!isMobile()) {
+      setTimeout(lockMouse, 60);
+    }
+  }
+}
+
+UI.mapBtn.addEventListener("click", toggleWorldMap);
+UI.closeWorldMapBtn.addEventListener("click", closeWorldMap);
+
+UI.clearWaypointBtn.addEventListener("click", () => {
+  waypoint = null;
+  localStorage.removeItem("potaraZombieWaypoint");
+  removeWaypointLabel();
+  drawExpandedMap();
+});
+
+addEventListener("keydown", event => {
+  if (event.key.toLowerCase() === "m") {
+    event.preventDefault();
+    toggleWorldMap();
+  }
+
+  if (event.key.toLowerCase() === "f") {
+    toggleFlashlight();
+  }
+});
+
+function toggleFlashlight() {
+  flashlightOn = !flashlightOn;
+  UI.flashlightBtn.textContent = flashlightOn ? "🔦" : "◼";
+  beep(flashlightOn ? 620 : 240, .08, "square", .025);
+}
+
+UI.flashlightBtn.addEventListener("click", toggleFlashlight);
+
+UI.worldMapCanvas.addEventListener("click", event => {
+  const rect = UI.worldMapCanvas.getBoundingClientRect();
+  const scaleX = UI.worldMapCanvas.width / rect.width;
+  const scaleY = UI.worldMapCanvas.height / rect.height;
+  const x = (event.clientX - rect.left) * scaleX;
+  const y = (event.clientY - rect.top) * scaleY;
+
+  let nearest = null;
+  let nearestDistance = Infinity;
+
+  for (const building of buildings) {
+    const bx = building.doorX / WORLD.w * UI.worldMapCanvas.width;
+    const by = building.doorY / WORLD.h * UI.worldMapCanvas.height;
+    const distance = Math.hypot(x - bx, y - by);
+
+    if (distance < nearestDistance) {
+      nearestDistance = distance;
+      nearest = building;
+    }
+  }
+
+  if (nearest && nearestDistance < 55) {
+    const data = BUILDING_DATA[nearest.type];
+
+    waypoint = {
+      x: nearest.doorX,
+      y: nearest.doorY,
+      name: data?.name || nearest.type
+    };
+
+    localStorage.setItem(
+      "potaraZombieWaypoint",
+      JSON.stringify(waypoint)
+    );
+
+    drawExpandedMap();
+  }
+});
+
+function drawMapSymbol(context, building, x, y, size = 11) {
+  const symbolData = MAP_SYMBOLS[building.type] || {
+    symbol: "?",
+    color: "#ffffff"
+  };
+
+  context.save();
+
+  context.fillStyle = "rgba(2,5,3,.85)";
+  context.strokeStyle = symbolData.color;
+  context.lineWidth = Math.max(1, size * .12);
+
+  context.beginPath();
+  context.arc(x, y, size, 0, Math.PI * 2);
+  context.fill();
+  context.stroke();
+
+  context.fillStyle = symbolData.color;
+  context.font = `900 ${Math.max(8, size)}px Orbitron`;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(symbolData.symbol, x, y + .5);
+
+  context.restore();
+}
+
+function drawExpandedMap() {
+  const canvas = UI.worldMapCanvas;
+  const context = worldMapCtx;
+  const w = canvas.width;
+  const h = canvas.height;
+
+  context.clearRect(0, 0, w, h);
+
+  const gradient = context.createLinearGradient(0, 0, 0, h);
+  gradient.addColorStop(0, "#101a12");
+  gradient.addColorStop(1, "#050905");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, w, h);
+
+  context.strokeStyle = "rgba(87,255,109,.055)";
+  context.lineWidth = 1;
+
+  for (let x = 0; x <= w; x += 45) {
+    context.beginPath();
+    context.moveTo(x, 0);
+    context.lineTo(x, h);
+    context.stroke();
+  }
+
+  for (let y = 0; y <= h; y += 45) {
+    context.beginPath();
+    context.moveTo(0, y);
+    context.lineTo(w, y);
+    context.stroke();
+  }
+
+  const sx = w / WORLD.w;
+  const sy = h / WORLD.h;
+
+  context.fillStyle = "#171c19";
+  context.fillRect(1210 * sx, 0, 300 * sx, h);
+  context.fillRect(0, 1260 * sy, w, 310 * sy);
+
+  buildings.forEach(building => {
+    const x = building.x * sx;
+    const y = building.y * sy;
+    const bw = building.w * sx;
+    const bh = building.h * sy;
+
+    context.fillStyle = "rgba(130,145,133,.18)";
+    context.fillRect(x, y, bw, bh);
+
+    drawMapSymbol(
+      context,
+      building,
+      building.doorX * sx,
+      building.doorY * sy,
+      13
+    );
+  });
+
+  if (waypoint) {
+    context.strokeStyle = "#57ff6d";
+    context.lineWidth = 2;
+    context.setLineDash([8, 7]);
+    context.beginPath();
+    context.moveTo(player.x * sx, player.y * sy);
+    context.lineTo(waypoint.x * sx, waypoint.y * sy);
+    context.stroke();
+    context.setLineDash([]);
+
+    context.fillStyle = "#57ff6d";
+    context.beginPath();
+    context.arc(waypoint.x * sx, waypoint.y * sy, 8, 0, Math.PI * 2);
+    context.fill();
+  }
+
+  context.fillStyle = "#00ecff";
+  context.beginPath();
+  context.arc(player.x * sx, player.y * sy, 7, 0, Math.PI * 2);
+  context.fill();
+
+  context.fillStyle = "#ffffff";
+  context.font = '800 12px Orbitron';
+  context.textAlign = "left";
+  context.fillText("YOU", player.x * sx + 10, player.y * sy + 4);
+}
+
+function removeWaypointLabel() {
+  if (waypointLabel) {
+    waypointLabel.remove();
+    waypointLabel = null;
+  }
+}
+
+function updateWaypointIndicator() {
+  removeWaypointLabel();
+
+  if (!waypoint || interior || worldMapOpen) return;
+
+  const point = worldToScreen(waypoint.x, waypoint.y);
+  const margin = 45;
+
+  const x = clamp(point.x, margin, innerWidth - margin);
+  const y = clamp(point.y, margin + 40, innerHeight - margin);
+
+  waypointLabel = document.createElement("div");
+  waypointLabel.className = "waypoint-label";
+
+  const distance = Math.round(
+    Math.hypot(player.x - waypoint.x, player.y - waypoint.y) / 10
+  );
+
+  waypointLabel.textContent = `${waypoint.name} • ${distance}m`;
+  waypointLabel.style.left = `${x}px`;
+  waypointLabel.style.top = `${y}px`;
+  document.body.appendChild(waypointLabel);
+
+  if (Math.hypot(player.x - waypoint.x, player.y - waypoint.y) < 90) {
+    waypoint = null;
+    localStorage.removeItem("potaraZombieWaypoint");
+    removeWaypointLabel();
+  }
+}
+
 /* Inventory + interaction */
 UI.inventoryBtn.addEventListener("click", toggleInventory);
 UI.interactBtn.addEventListener("click", interact);
@@ -1162,7 +1455,8 @@ function toggleInventory() {
     !running ||
     (UI.shop && !UI.shop.classList.contains("hidden")) ||
     !UI.npcShop.classList.contains("hidden") ||
-    !UI.questScreen.classList.contains("hidden")
+    !UI.questScreen.classList.contains("hidden") ||
+    !UI.worldMap.classList.contains("hidden")
   ) return;
 
   if (inventoryOpen) {
@@ -1755,9 +2049,89 @@ function killZombie(index, z) {
   beep(z.type === "tank" ? 70 : 110,z.type === "tank" ? .25 : .12,"sawtooth",z.type === "tank" ? .07 : .03);
 }
 
+
+/* V5.3 time + weather */
+function updateWorldTime(dt) {
+  worldMinutes += dt * 3.2;
+
+  if (worldMinutes >= 1440) {
+    worldMinutes -= 1440;
+    dayNumber++;
+  }
+
+  const hours = Math.floor(worldMinutes / 60);
+  const minutes = Math.floor(worldMinutes % 60);
+
+  UI.timeStatus.textContent =
+    `DAY ${dayNumber} • ${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+
+  weatherTimer += dt;
+
+  if (weatherTimer > 55) {
+    weatherTimer = 0;
+    chooseWeather();
+  }
+
+  if (weather === "storm") {
+    thunderTimer += dt;
+
+    if (thunderTimer > 7 + Math.random() * 8) {
+      thunderTimer = 0;
+      triggerThunder();
+    }
+  } else {
+    thunderTimer = 0;
+  }
+}
+
+function chooseWeather() {
+  const roll = Math.random();
+
+  weather =
+    roll < .5 ? "clear" :
+    roll < .72 ? "fog" :
+    roll < .9 ? "rain" : "storm";
+
+  updateWeatherUI();
+}
+
+function updateWeatherUI() {
+  const data = {
+    clear: ["☀️", "CLEAR"],
+    fog: ["🌫️", "FOG"],
+    rain: ["🌧️", "RAIN"],
+    storm: ["⛈️", "STORM"]
+  }[weather];
+
+  UI.weatherStatus.textContent = `${data[0]} ${data[1]}`;
+  rainOverlay.classList.toggle(
+    "active",
+    weather === "rain" || weather === "storm"
+  );
+}
+
+function triggerThunder() {
+  thunderFlash.classList.remove("active");
+  void thunderFlash.offsetWidth;
+  thunderFlash.classList.add("active");
+  beep(55, .45, "sawtooth", .08);
+  shake = Math.max(shake, 6);
+}
+
+function getNightStrength() {
+  const hour = worldMinutes / 60;
+
+  if (hour >= 20 || hour < 5) return .48;
+  if (hour >= 18) return (hour - 18) / 2 * .48;
+  if (hour < 7) return (7 - hour) / 2 * .48;
+
+  return 0;
+}
+
 /* Updates */
 function update(dt) {
   fogTime += dt;
+  updateWorldTime(dt);
   fireCooldown = Math.max(0, fireCooldown - dt);
   muzzleFlash = Math.max(0, muzzleFlash - dt);
   shake = Math.max(0, shake - 22 * dt);
@@ -1772,6 +2146,7 @@ function update(dt) {
   updateBossBar();
   updateBossAttacks(dt);
   updateInteraction();
+  updateWaypointIndicator();
 
   if (!waveBreakActive && !interior) spawnTimer += dt;
   if (!waveBreakActive && !interior && spawnTimer >= spawnDelay) {
@@ -2235,20 +2610,78 @@ function drawParticles(){
 }
 
 function drawLighting(){
-  const p=worldToScreen(player.x,player.y);
-  const dark=ctx.createRadialGradient(p.x,p.y,70,p.x,p.y,Math.max(innerWidth,innerHeight)*.72);
-  dark.addColorStop(0,"rgba(0,0,0,0)");dark.addColorStop(.36,"rgba(0,0,0,.1)");dark.addColorStop(1,"rgba(0,3,1,.78)");
-  ctx.fillStyle=dark;ctx.fillRect(0,0,innerWidth,innerHeight);
+  const p = worldToScreen(player.x, player.y);
+  const night = getNightStrength();
+  const weatherDarkness =
+    weather === "storm" ? .16 :
+    weather === "rain" ? .08 :
+    weather === "fog" ? .05 : 0;
 
-  ctx.save();ctx.globalCompositeOperation="lighter";
-  const fx=p.x+Math.cos(player.aim)*150,fy=p.y+Math.sin(player.aim)*150;
-  const light=ctx.createRadialGradient(p.x,p.y,10,fx,fy,390);
-  light.addColorStop(0,"rgba(185,255,188,.16)");light.addColorStop(.5,"rgba(110,180,115,.06)");light.addColorStop(1,"rgba(0,0,0,0)");
-  ctx.fillStyle=light;ctx.beginPath();ctx.arc(fx,fy,390,0,Math.PI*2);ctx.fill();ctx.restore();
+  const darkness = ctx.createRadialGradient(
+    p.x,
+    p.y,
+    60,
+    p.x,
+    p.y,
+    Math.max(innerWidth, innerHeight) * .78
+  );
+
+  darkness.addColorStop(
+    0,
+    `rgba(0,0,0,${Math.max(0, night * .18)})`
+  );
+
+  darkness.addColorStop(
+    .4,
+    `rgba(0,0,0,${.12 + night * .38 + weatherDarkness})`
+  );
+
+  darkness.addColorStop(
+    1,
+    `rgba(0,3,1,${.62 + night * .35 + weatherDarkness})`
+  );
+
+  ctx.fillStyle = darkness;
+  ctx.fillRect(0,0,innerWidth,innerHeight);
+
+  if (flashlightOn) {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+
+    const fx = p.x + Math.cos(player.aim) * 165;
+    const fy = p.y + Math.sin(player.aim) * 165;
+
+    const light = ctx.createRadialGradient(
+      p.x,
+      p.y,
+      10,
+      fx,
+      fy,
+      420
+    );
+
+    light.addColorStop(
+      0,
+      `rgba(205,255,208,${.16 + night * .22})`
+    );
+
+    light.addColorStop(
+      .5,
+      `rgba(125,195,130,${.06 + night * .08})`
+    );
+
+    light.addColorStop(1,"rgba(0,0,0,0)");
+
+    ctx.fillStyle = light;
+    ctx.beginPath();
+    ctx.arc(fx,fy,420,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
 }
 
 function drawFog(){
-  ctx.save();ctx.globalAlpha=.055;
+  ctx.save();ctx.globalAlpha = weather === "fog" ? .15 : weather === "storm" ? .09 : .055;
   for(let i=0;i<7;i++){
     const x=(i*260+fogTime*(14+i*2))%(innerWidth+500)-250;
     const y=100+(i*130)%Math.max(200,innerHeight-150);
@@ -2295,23 +2728,31 @@ function drawMiniMap() {
   const h = map.height;
 
   miniCtx.clearRect(0, 0, w, h);
-  miniCtx.fillStyle = "rgba(3,8,4,.92)";
+  miniCtx.fillStyle = "rgba(3,8,4,.94)";
   miniCtx.fillRect(0, 0, w, h);
 
   const sx = w / WORLD.w;
   const sy = h / WORLD.h;
 
-  miniCtx.fillStyle = "rgba(110,130,115,.22)";
-  buildings.forEach((building) => {
+  miniCtx.fillStyle = "rgba(110,130,115,.18)";
+  buildings.forEach(building => {
     miniCtx.fillRect(
       building.x * sx,
       building.y * sy,
       Math.max(2, building.w * sx),
       Math.max(2, building.h * sy)
     );
+
+    drawMapSymbol(
+      miniCtx,
+      building,
+      building.doorX * sx,
+      building.doorY * sy,
+      5.5
+    );
   });
 
-  zombies.forEach((zombie) => {
+  zombies.forEach(zombie => {
     miniCtx.fillStyle =
       zombie.type === "boss" ? "#ff365d" :
       zombie.type === "tank" ? "#ff8b5c" :
@@ -2321,12 +2762,30 @@ function drawMiniMap() {
     miniCtx.arc(
       zombie.x * sx,
       zombie.y * sy,
-      zombie.type === "boss" ? 4 : 2,
+      zombie.type === "boss" ? 3.5 : 1.6,
       0,
       Math.PI * 2
     );
     miniCtx.fill();
   });
+
+  if (waypoint) {
+    miniCtx.strokeStyle = "#57ff6d";
+    miniCtx.lineWidth = 1.2;
+    miniCtx.setLineDash([3, 3]);
+
+    miniCtx.beginPath();
+    miniCtx.moveTo(player.x * sx, player.y * sy);
+    miniCtx.lineTo(waypoint.x * sx, waypoint.y * sy);
+    miniCtx.stroke();
+
+    miniCtx.setLineDash([]);
+
+    miniCtx.fillStyle = "#57ff6d";
+    miniCtx.beginPath();
+    miniCtx.arc(waypoint.x * sx, waypoint.y * sy, 3.5, 0, Math.PI * 2);
+    miniCtx.fill();
+  }
 
   miniCtx.fillStyle = "#00ecff";
   miniCtx.beginPath();
@@ -2422,7 +2881,10 @@ function continueToNextWave() {
   paused = false;
 
   UI.inventory.classList.add("hidden");
+  UI.worldMap.classList.add("hidden");
   inventoryOpen = false;
+  worldMapOpen = false;
+  removeWaypointLabel();
   UI.waveComplete.classList.add("hidden");
   UI.shop.classList.add("hidden");
 
@@ -2740,6 +3202,7 @@ function loop(now){
 createWorld();
 resize();
 updateQuestTracker();
+updateWeatherUI();
 updateUI();
 draw();
 
