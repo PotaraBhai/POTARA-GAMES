@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#041006">
-  <title>Zombie Survival Remastered V5.1 | POTARA GAMES</title>
+  <title>Zombie Survival Remastered V5.2 | POTARA GAMES</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -76,6 +76,7 @@
       <div><span>🌊</span><small>WAVE</small><strong id="waveText">1</strong></div>
       <div><span>🏆</span><small>BEST</small><strong id="highScoreText">0</strong></div>
       <div><span>🪙</span><small>COINS</small><strong id="coinsText">0</strong></div>
+      <div><span>💵</span><small>CASH</small><strong id="cashText">0</strong></div>
     </div>
   </section>
 
@@ -102,7 +103,7 @@
         <button id="startButton" class="main-btn">▶ ENTER INFECTED ZONE</button>
         <button id="fullscreenButton" class="secondary-btn">⛶ FULLSCREEN</button>
       </div>
-      <p class="version">VERSION 5.1 LOOT FIX</p>
+      <p class="version">VERSION 5.2 CITY UPDATE</p>
     </div>
   </div>
 
@@ -216,6 +217,51 @@
     </div>
   </div>
 
+
+  
+  <div id="questTracker">
+    <span>ACTIVE QUEST</span>
+    <strong id="questTitle">No active quest</strong>
+    <small id="questProgress">Talk to the Quest Officer</small>
+  </div>
+
+  <div class="overlay hidden" id="npcShopScreen">
+    <div class="panel npc-shop-panel">
+      <div class="npc-shop-head">
+        <div>
+          <p class="eyebrow" id="npcShopEyebrow">CITY TRADER</p>
+          <h2 id="npcShopTitle">SUPPLY <span>SHOP</span></h2>
+        </div>
+        <div class="npc-shop-cash">💵 <strong id="npcShopCash">0</strong></div>
+      </div>
+
+      <p class="npc-dialogue" id="npcDialogue">
+        Supplies are limited. Spend wisely.
+      </p>
+
+      <div class="npc-shop-grid" id="npcShopGrid"></div>
+
+      <button id="closeNpcShopButton" class="main-btn">← LEAVE SHOP</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="questScreen">
+    <div class="panel quest-panel">
+      <div class="quest-head">
+        <div>
+          <p class="eyebrow">CITY SURVIVAL NETWORK</p>
+          <h2>QUEST <span>CENTER</span></h2>
+        </div>
+        <button id="closeQuestButton" class="inventory-close">✕</button>
+      </div>
+
+      <p class="npc-dialogue">
+        Complete missions to earn cash and rare supplies.
+      </p>
+
+      <div class="quest-list" id="questList"></div>
+    </div>
+  </div>
 
   <div id="missionPanel">
     <span>MISSION</span>
