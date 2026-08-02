@@ -91,7 +91,12 @@ const UI = {
   worldMap: $("worldMapScreen"),
   worldMapCanvas: $("worldMapCanvas"),
   closeWorldMapBtn: $("closeWorldMapButton"),
-  clearWaypointBtn: $("clearWaypointButton")
+  clearWaypointBtn: $("clearWaypointButton"),
+  level: $("levelText"),
+  xpFill: $("xpFill"),
+  xpText: $("xpText"),
+  meleeBtn: $("meleeButton"),
+  combatMessage: $("combatMessage")
 };
 
 const WORLD = { w: 3200, h: 2400 };
@@ -106,7 +111,8 @@ const WEAPONS = {
     pellets: 1,
     spread: 0.015,
     shake: 5,
-    color: "#ffd85c"
+    color: "#ffd85c",
+    unlockLevel: 1
   },
   smg: {
     name: "SMG",
@@ -118,7 +124,8 @@ const WEAPONS = {
     pellets: 1,
     spread: 0.055,
     shake: 3.5,
-    color: "#9fe9ff"
+    color: "#9fe9ff",
+    unlockLevel: 2
   },
   shotgun: {
     name: "SHOTGUN",
@@ -130,7 +137,34 @@ const WEAPONS = {
     pellets: 7,
     spread: 0.23,
     shake: 12,
-    color: "#ffb25c"
+    color: "#ffb25c",
+    unlockLevel: 3
+  },
+  assault: {
+    name: "ASSAULT RIFLE",
+    mag: 35,
+    fireDelay: 0.105,
+    reload: 1.45,
+    speed: 1020,
+    damage: 1.15,
+    pellets: 1,
+    spread: 0.035,
+    shake: 4.5,
+    color: "#b4ff8a",
+    unlockLevel: 5
+  },
+  sniper: {
+    name: "SNIPER",
+    mag: 5,
+    fireDelay: 0.95,
+    reload: 2.0,
+    speed: 1450,
+    damage: 4.5,
+    pellets: 1,
+    spread: 0.002,
+    shake: 16,
+    color: "#ff7cf2",
+    unlockLevel: 8
   }
 };
 
@@ -138,7 +172,9 @@ let currentWeapon = "pistol";
 let weaponAmmo = {
   pistol: WEAPONS.pistol.mag,
   smg: WEAPONS.smg.mag,
-  shotgun: WEAPONS.shotgun.mag
+  shotgun: WEAPONS.shotgun.mag,
+  assault: WEAPONS.assault.mag,
+  sniper: WEAPONS.sniper.mag
 };
 
 let running = false;
@@ -173,6 +209,11 @@ let pointerLocked = false;
 let virtualMouseX = innerWidth / 2;
 let virtualMouseY = innerHeight / 2;
 let highScore = Number(localStorage.getItem("potaraZombieV2Best") || 0);
+let xp = Number(localStorage.getItem("potaraZombieXP") || 0);
+let level = Number(localStorage.getItem("potaraZombieLevel") || 1);
+let meleeCooldown = 0;
+let bloodPools = [];
+let destructibles = [];
 let waveKills = 0;
 let waveCoins = 0;
 let waveBreakActive = false;
@@ -639,6 +680,20 @@ function createWorld() {
     const p = safePosition(30);
     decor.push({ type: "barrel", x: p.x, y: p.y, r: 15, explosive: Math.random() > .35, health: 2, exploded: false });
   }
+
+
+  for (let i = 0; i < 36; i++) {
+    const p = safePosition(28);
+    destructibles.push({
+      type: Math.random() > .5 ? "crate" : "fence",
+      x: p.x,
+      y: p.y,
+      r: 18,
+      health: 3,
+      destroyed: false
+    });
+  }
+
 }
 
 function collideBuildings(entity, ox, oy, radius) {
@@ -703,10 +758,14 @@ function resetGame() {
   zombies = [];
   particles = [];
   pickups = [];
+  bloodPools = [];
+  destructibles = [];
   weaponAmmo = {
     pistol: WEAPONS.pistol.mag,
     smg: WEAPONS.smg.mag,
-    shotgun: WEAPONS.shotgun.mag
+    shotgun: WEAPONS.shotgun.mag,
+    assault: WEAPONS.assault.mag,
+    sniper: WEAPONS.sniper.mag
   };
   currentWeapon = "pistol";
   ammo = weaponAmmo[currentWeapon];
@@ -924,7 +983,7 @@ UI.reloadBtn.addEventListener("click", startReload);
 
 /* Weapon system */
 function selectWeapon(name) {
-  if (!WEAPONS[name] || reloading) return;
+  if (!WEAPONS[name] || reloading || level < WEAPONS[name].unlockLevel) return;
 
   weaponAmmo[currentWeapon] = ammo;
   currentWeapon = name;
@@ -951,11 +1010,13 @@ addEventListener("keydown", (event) => {
   if (event.key === "1") selectWeapon("pistol");
   if (event.key === "2") selectWeapon("smg");
   if (event.key === "3") selectWeapon("shotgun");
+  if (event.key === "4") selectWeapon("assault");
+  if (event.key === "5") selectWeapon("sniper");
 });
 
 if (UI.weaponBtn) {
   UI.weaponBtn.addEventListener("click", () => {
-    const order = ["pistol", "smg", "shotgun"];
+    const order = ["pistol", "smg", "shotgun", "assault", "sniper"].filter(name => level >= WEAPONS[name].unlockLevel);
     const next = order[(order.indexOf(currentWeapon) + 1) % order.length];
     selectWeapon(next);
   });
@@ -1254,6 +1315,7 @@ function toggleFlashlight() {
 }
 
 UI.flashlightBtn.addEventListener("click", toggleFlashlight);
+UI.meleeBtn.addEventListener("click", meleeAttack);
 
 UI.worldMapCanvas.addEventListener("click", event => {
   const rect = UI.worldMapCanvas.getBoundingClientRect();
@@ -2019,6 +2081,19 @@ function killZombie(index, z) {
   zombies.splice(index,1);
   kills++;
   waveKills++;
+
+  addXP(
+    z.type === "boss" ? 80 :
+    z.type === "tank" ? 28 :
+    z.type === "runner" ? 14 : 10
+  );
+
+  addBloodPool(
+    z.x,
+    z.y,
+    z.type === "boss" ? 72 :
+    z.type === "tank" ? 54 : 36
+  );
   increaseQuestProgress("kills", 1);
 
   if (z.type === "tank") {
@@ -2128,11 +2203,153 @@ function getNightStrength() {
   return 0;
 }
 
+
+/* V5.4 combat progression */
+function xpNeededForLevel(targetLevel = level) {
+  return Math.floor(100 * Math.pow(1.28, targetLevel - 1));
+}
+
+function addXP(amount) {
+  xp += amount;
+
+  let leveled = false;
+
+  while (xp >= xpNeededForLevel()) {
+    xp -= xpNeededForLevel();
+    level++;
+    leveled = true;
+  }
+
+  localStorage.setItem("potaraZombieXP", String(xp));
+  localStorage.setItem("potaraZombieLevel", String(level));
+
+  if (leveled) {
+    showCombatMessage(`LEVEL ${level} UNLOCKED`, "levelup");
+    beep(920, .22, "triangle", .07);
+  }
+
+  updateUI();
+}
+
+function showCombatMessage(text, type = "") {
+  UI.combatMessage.textContent = text;
+  UI.combatMessage.className = "";
+
+  void UI.combatMessage.offsetWidth;
+
+  UI.combatMessage.classList.add("show");
+  if (type) UI.combatMessage.classList.add(type);
+}
+
+function meleeAttack() {
+  if (
+    !running ||
+    paused ||
+    waveBreakActive ||
+    inventoryOpen ||
+    meleeCooldown > 0
+  ) {
+    return;
+  }
+
+  meleeCooldown = .55;
+  shake = Math.max(shake, 5);
+  beep(260, .09, "sawtooth", .04);
+
+  const range = 92;
+  const arc = Math.PI * .72;
+  let hits = 0;
+
+  for (let i = zombies.length - 1; i >= 0; i--) {
+    const zombie = zombies[i];
+    const dx = zombie.x - player.x;
+    const dy = zombie.y - player.y;
+    const distance = Math.hypot(dx, dy);
+
+    if (distance > range + zombie.r) continue;
+
+    const angleToZombie = Math.atan2(dy, dx);
+    let diff = angleToZombie - player.aim;
+
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+
+    if (Math.abs(diff) <= arc / 2) {
+      zombie.health -= 2.2 + level * .08;
+      zombie.hit = .14;
+      hits++;
+
+      burst(zombie.x, zombie.y, "#ff365d", 13, 180);
+
+      if (zombie.health <= 0) {
+        killZombie(i, zombie);
+      }
+    }
+  }
+
+  showCombatMessage(hits > 0 ? `MELEE HIT ×${hits}` : "MISS");
+}
+
+function addBloodPool(x, y, size = 38) {
+  bloodPools.push({
+    x,
+    y,
+    size,
+    alpha: .68,
+    rotation: Math.random() * Math.PI
+  });
+
+  if (bloodPools.length > 80) {
+    bloodPools.shift();
+  }
+}
+
+function getHeadshotChance(bullet, zombie) {
+  const precision =
+    currentWeapon === "sniper" ? .72 :
+    currentWeapon === "pistol" ? .28 :
+    currentWeapon === "assault" ? .22 :
+    currentWeapon === "smg" ? .14 : .1;
+
+  const distance = Math.hypot(
+    bullet.x - player.x,
+    bullet.y - player.y
+  );
+
+  const distancePenalty = Math.min(.22, distance / 2600);
+
+  return Math.max(.05, precision - distancePenalty);
+}
+
+function damageDestructible(item, damage) {
+  if (item.destroyed) return;
+
+  item.health -= damage;
+  burst(item.x, item.y, "#d7b27a", 8, 130);
+
+  if (item.health <= 0) {
+    item.destroyed = true;
+    burst(item.x, item.y, "#b98247", 24, 220);
+
+    if (Math.random() < .22) {
+      pickups.push({
+        type: Math.random() > .5 ? "health" : "armor",
+        x: item.x,
+        y: item.y,
+        r: 16,
+        life: 15,
+        t: Math.random() * 10
+      });
+    }
+  }
+}
+
 /* Updates */
 function update(dt) {
   fogTime += dt;
   updateWorldTime(dt);
   fireCooldown = Math.max(0, fireCooldown - dt);
+  meleeCooldown = Math.max(0, meleeCooldown - dt);
   muzzleFlash = Math.max(0, muzzleFlash - dt);
   shake = Math.max(0, shake - 22 * dt);
 
@@ -2233,6 +2450,25 @@ function updateBullets(dt) {
     }
 
 
+
+    let hitObject = false;
+
+    for (const item of destructibles) {
+      if (
+        !item.destroyed &&
+        Math.hypot(b.x - item.x, b.y - item.y) < b.r + item.r
+      ) {
+        damageDestructible(item, b.damage);
+        bullets.splice(i, 1);
+        hitObject = true;
+        break;
+      }
+    }
+
+    if (hitObject) {
+      continue;
+    }
+
     let hitBarrel = false;
 
     for (const item of decor) {
@@ -2263,11 +2499,28 @@ function updateBullets(dt) {
     for (let j = zombies.length - 1; j >= 0; j--) {
       const z = zombies[j];
       if (Math.hypot(b.x-z.x,b.y-z.y) < b.r + z.r) {
-        z.health -= b.damage;
+        const headshot = Math.random() < getHeadshotChance(b, z);
+        const damage = b.damage * (headshot ? 2.35 : 1);
+
+        z.health -= damage;
         z.hit = .1;
-        burst(b.x,b.y,"#55d962",8,160);
+
+        burst(
+          b.x,
+          b.y,
+          headshot ? "#ffe45c" : "#55d962",
+          headshot ? 15 : 8,
+          headshot ? 230 : 160
+        );
+
         bullets.splice(i,1);
-        shake = Math.max(shake,z.type==="tank"?5:2);
+        shake = Math.max(shake, headshot ? 6 : z.type==="tank" ? 5 : 2);
+
+        if (headshot) {
+          showCombatMessage("HEADSHOT", "headshot");
+          addXP(6);
+        }
+
         if (z.health <= 0) killZombie(j,z);
         break;
       }
@@ -2385,9 +2638,17 @@ function draw() {
   drawGround();
   drawRoads();
 
+  drawBloodPools();
+
   const items = [];
   for (const b of buildings) items.push({y:b.y+b.h,draw:()=>{drawBuilding(b);drawBuildingSign(b);}});
   for (const d of decor) items.push({y:d.y,draw:()=>drawDecor(d)});
+  for (const item of destructibles) {
+    items.push({
+      y: item.y,
+      draw: () => drawDestructible(item)
+    });
+  }
   for (const p of pickups) items.push({y:p.y,draw:()=>drawPickup(p)});
   for (const z of zombies) items.push({y:z.y+z.r,draw:()=>drawZombie(z)});
   items.push({y:player.y+player.r,draw:drawPlayer});
@@ -2513,6 +2774,80 @@ function drawBuildingSign(building) {
   ctx.fillStyle = "#f3f7f4";
   ctx.font = '800 8px "Orbitron"';
   ctx.fillText(data.name, point.x + 10, point.y + 4);
+
+  ctx.restore();
+}
+
+
+function drawBloodPools() {
+  for (const pool of bloodPools) {
+    if (!visible(pool.x, pool.y)) continue;
+
+    const point = worldToScreen(pool.x, pool.y);
+
+    ctx.save();
+    ctx.translate(point.x, point.y);
+    ctx.rotate(pool.rotation);
+    ctx.globalAlpha = pool.alpha;
+
+    const gradient = ctx.createRadialGradient(
+      0,
+      0,
+      2,
+      0,
+      0,
+      pool.size
+    );
+
+    gradient.addColorStop(0, "rgba(120,0,20,.75)");
+    gradient.addColorStop(.62, "rgba(75,0,12,.48)");
+    gradient.addColorStop(1, "rgba(45,0,7,0)");
+
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.ellipse(
+      0,
+      0,
+      pool.size,
+      pool.size * .55,
+      0,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+
+    ctx.restore();
+  }
+}
+
+function drawDestructible(item) {
+  if (item.destroyed || !visible(item.x, item.y)) return;
+
+  const point = worldToScreen(item.x, item.y);
+
+  ctx.save();
+  ctx.translate(point.x, point.y);
+
+  if (item.type === "crate") {
+    ctx.fillStyle = "#5b3d20";
+    ctx.fillRect(-19, -17, 38, 34);
+
+    ctx.strokeStyle = "#c28a4d";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(-19, -17, 38, 34);
+
+    ctx.beginPath();
+    ctx.moveTo(-18, -16);
+    ctx.lineTo(18, 16);
+    ctx.moveTo(18, -16);
+    ctx.lineTo(-18, 16);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = "#6a4a2b";
+    ctx.fillRect(-25, -7, 50, 10);
+    ctx.fillRect(-21, -20, 7, 40);
+    ctx.fillRect(14, -20, 7, 40);
+  }
 
   ctx.restore();
 }
@@ -3152,6 +3487,11 @@ function updateUI(){
   UI.reserveAmmoText.textContent = "/ ∞";
   UI.coins.textContent = coins;
   UI.cash.textContent = cash;
+  UI.level.textContent = level;
+
+  const neededXP = xpNeededForLevel();
+  UI.xpFill.style.width = Math.min(100, xp / neededXP * 100) + "%";
+  UI.xpText.textContent = `${Math.floor(xp)} / ${neededXP}`;
   UI.npcShopCash.textContent = cash;
   if (UI.shopCoins) UI.shopCoins.textContent = coins;
   UI.kills.textContent=kills;
