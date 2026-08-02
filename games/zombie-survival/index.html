@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#041006">
-  <title>Zombie Survival V2 | POTARA GAMES</title>
+  <title>Zombie Survival V4 | POTARA GAMES</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -60,9 +60,14 @@
     </div>
 
     <div class="weapon-card">
-      <span>PISTOL</span>
-      <strong id="ammoText">12</strong><small>/ ∞</small>
+      <span id="weaponName">PISTOL</span>
+      <strong id="ammoText">12</strong><small id="reserveAmmoText">/ ∞</small>
       <div id="reloadBar"><div id="reloadProgress"></div></div>
+      <div class="weapon-slots">
+        <button class="weapon-slot active" data-weapon="pistol">1</button>
+        <button class="weapon-slot" data-weapon="smg">2</button>
+        <button class="weapon-slot" data-weapon="shotgun">3</button>
+      </div>
     </div>
 
     <div class="stats">
@@ -70,9 +75,15 @@
       <div><span>⭐</span><small>SCORE</small><strong id="scoreText">0</strong></div>
       <div><span>🌊</span><small>WAVE</small><strong id="waveText">1</strong></div>
       <div><span>🏆</span><small>BEST</small><strong id="highScoreText">0</strong></div>
+      <div><span>🪙</span><small>COINS</small><strong id="coinsText">0</strong></div>
     </div>
   </section>
 
+  <canvas id="miniMap" width="150" height="150"></canvas>
+  <div id="bossBar">
+    <div class="boss-title">☠ MUTANT BOSS</div>
+    <div class="boss-track"><div id="bossFill"></div></div>
+  </div>
   <div id="waveBanner"><span>WAVE</span><strong id="waveBannerNumber">1</strong></div>
 
   <div class="overlay" id="startScreen">
@@ -91,7 +102,7 @@
         <button id="startButton" class="main-btn">▶ ENTER INFECTED ZONE</button>
         <button id="fullscreenButton" class="secondary-btn">⛶ FULLSCREEN</button>
       </div>
-      <p class="version">VERSION 2.0</p>
+      <p class="version">VERSION 4.0</p>
     </div>
   </div>
 
@@ -119,13 +130,100 @@
     </div>
   </div>
 
-  <div class="mobile-controls">
+  
+  <div class="overlay hidden" id="waveCompleteScreen">
+    <div class="panel compact wave-panel">
+      <p class="eyebrow">AREA SECURED</p>
+      <h2>WAVE <span>COMPLETE</span></h2>
+
+      <div class="final-grid">
+        <div><small>WAVE</small><strong id="completeWave">1</strong></div>
+        <div><small>KILLS</small><strong id="completeKills">0</strong></div>
+        <div><small>COINS</small><strong id="completeCoins">0</strong></div>
+        <div><small>SCORE</small><strong id="completeScore">0</strong></div>
+      </div>
+
+      <div class="wave-actions">
+        <button id="continueWaveButton" class="main-btn">▶ NEXT WAVE</button>
+        <button id="openShopButton" class="secondary-btn">🛒 OPEN SHOP</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="shopScreen">
+    <div class="panel shop-panel">
+      <div class="shop-head">
+        <div>
+          <p class="eyebrow">POTARA ARMORY</p>
+          <h2>WEAPON <span>SHOP</span></h2>
+        </div>
+        <div class="shop-coins">🪙 <strong id="shopCoins">0</strong></div>
+      </div>
+
+      <div class="shop-grid">
+        <article class="shop-item">
+          <div class="shop-icon">🔫</div>
+          <h3>PISTOL DAMAGE</h3>
+          <p>Increase pistol damage.</p>
+          <span id="pistolDamageLevel">Level 1</span>
+          <button data-upgrade="pistolDamage">BUY — <b id="pistolDamageCost">40</b> 🪙</button>
+        </article>
+
+        <article class="shop-item">
+          <div class="shop-icon">⚡</div>
+          <h3>SMG FIRE RATE</h3>
+          <p>Shoot faster with the SMG.</p>
+          <span id="smgRateLevel">Level 1</span>
+          <button data-upgrade="smgRate">BUY — <b id="smgRateCost">60</b> 🪙</button>
+        </article>
+
+        <article class="shop-item">
+          <div class="shop-icon">💥</div>
+          <h3>SHOTGUN POWER</h3>
+          <p>More pellet damage.</p>
+          <span id="shotgunPowerLevel">Level 1</span>
+          <button data-upgrade="shotgunPower">BUY — <b id="shotgunPowerCost">75</b> 🪙</button>
+        </article>
+
+        <article class="shop-item">
+          <div class="shop-icon">❤️</div>
+          <h3>MAX HEALTH</h3>
+          <p>Increase maximum health.</p>
+          <span id="maxHealthLevel">Level 1</span>
+          <button data-upgrade="maxHealth">BUY — <b id="maxHealthCost">50</b> 🪙</button>
+        </article>
+
+        <article class="shop-item">
+          <div class="shop-icon">🛡️</div>
+          <h3>STARTING ARMOR</h3>
+          <p>Start every run with armor.</p>
+          <span id="armorLevel">Level 0</span>
+          <button data-upgrade="armor">BUY — <b id="armorCost">55</b> 🪙</button>
+        </article>
+
+        <article class="shop-item">
+          <div class="shop-icon">🏃</div>
+          <h3>MOVE SPEED</h3>
+          <p>Move faster across the city.</p>
+          <span id="speedLevel">Level 1</span>
+          <button data-upgrade="speed">BUY — <b id="speedCost">65</b> 🪙</button>
+        </article>
+      </div>
+
+      <div class="shop-footer">
+        <button id="closeShopButton" class="main-btn">▶ CONTINUE SURVIVAL</button>
+      </div>
+    </div>
+  </div>
+
+<div class="mobile-controls">
     <div id="joystickArea">
       <div class="joystick-base">
         <div id="joystickStick"></div>
       </div>
     </div>
     <div class="mobile-actions">
+      <button id="weaponButton">🔁<span>WEAPON</span></button>
       <button id="reloadButton">↻<span>RELOAD</span></button>
       <button id="shootButton">🔫<span>SHOOT</span></button>
     </div>
