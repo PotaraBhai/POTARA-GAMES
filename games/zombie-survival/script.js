@@ -174,6 +174,19 @@ const inventory = JSON.parse(
   })
 );
 
+const BUILDING_LOOT_SAVE_KEY = "potaraZombieBuildingLoot";
+
+let buildingLootState = JSON.parse(
+  localStorage.getItem(BUILDING_LOOT_SAVE_KEY) || "{}"
+);
+
+function saveBuildingLootState() {
+  localStorage.setItem(
+    BUILDING_LOOT_SAVE_KEY,
+    JSON.stringify(buildingLootState)
+  );
+}
+
 const ITEM_DATA = {
   medkit: {
     name: "MEDKIT",
@@ -330,10 +343,42 @@ function createWorld() {
       index % 4 === 0 ? "hospital" :
       index % 4 === 1 ? "house" :
       index % 4 === 2 ? "store" : "police";
+
     building.doorX = building.x + building.w / 2;
     building.doorY = building.y + building.h + 18;
-    building.searched = false;
+
+    const savedState = buildingLootState[String(index)] || {
+      searched: false,
+      openedCrates: [false, false, false]
+    };
+
+    building.searched = Boolean(savedState.searched);
+
+    building.lootCrates = [
+      {
+        id: 0,
+        x: 190,
+        y: 180,
+        opened: Boolean(savedState.openedCrates?.[0])
+      },
+      {
+        id: 1,
+        x: 785,
+        y: 180,
+        opened: Boolean(savedState.openedCrates?.[1])
+      },
+      {
+        id: 2,
+        x: 500,
+        y: 350,
+        opened: Boolean(savedState.openedCrates?.[2])
+      }
+    ];
   });
+
+  buildingsSearched = buildings.filter(
+    building => building.searched
+  ).length;
 
   decor = [];
   for (let i = 0; i < 85; i++) {
@@ -441,7 +486,6 @@ function resetGame() {
   interior = null;
   outsidePosition = null;
   nearbyInteraction = null;
-  buildingsSearched = 0;
   UI.inventory.classList.add("hidden");
   createWorld();
   cameraInstant();
@@ -937,11 +981,7 @@ function enterBuilding(building) {
     height: 700,
     exitX: 500,
     exitY: 645,
-    crates: [
-      { x: 190, y: 180, opened: false },
-      { x: 785, y: 180, opened: false },
-      { x: 500, y: 350, opened: false }
-    ]
+    crates: building.lootCrates
   };
 
   player.x = interior.exitX;
@@ -958,6 +998,20 @@ function enterBuilding(building) {
   if (!building.searched) {
     building.searched = true;
     buildingsSearched++;
+
+    const key = String(building.id);
+    const oldState = buildingLootState[key] || {
+      searched: false,
+      openedCrates: [false, false, false]
+    };
+
+    buildingLootState[key] = {
+      ...oldState,
+      searched: true
+    };
+
+    saveBuildingLootState();
+
     UI.missionText.textContent =
       buildingsSearched >= 2
         ? "Find the City Key inside a loot crate"
@@ -980,9 +1034,28 @@ function exitBuilding() {
 }
 
 function searchCrate(crate) {
-  if (crate.opened) return;
+  if (crate.opened || !interior?.building) return;
 
   crate.opened = true;
+
+  const buildingId = String(interior.building.id);
+  const existingState = buildingLootState[buildingId] || {
+    searched: true,
+    openedCrates: [false, false, false]
+  };
+
+  const openedCrates = [
+    ...(existingState.openedCrates || [false, false, false])
+  ];
+
+  openedCrates[crate.id] = true;
+
+  buildingLootState[buildingId] = {
+    searched: true,
+    openedCrates
+  };
+
+  saveBuildingLootState();
 
   const lootCount = Math.random() > .72 ? 2 : 1;
 
