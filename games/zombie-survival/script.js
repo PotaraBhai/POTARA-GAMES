@@ -68,7 +68,21 @@ const UI = {
   interactText: $("interactText"),
   missionText: $("missionText"),
   inventoryBtn: $("inventoryButton"),
-  interactBtn: $("interactButton")
+  interactBtn: $("interactButton"),
+  cash: $("cashText"),
+  questTracker: $("questTracker"),
+  questTitle: $("questTitle"),
+  questProgress: $("questProgress"),
+  npcShop: $("npcShopScreen"),
+  npcShopEyebrow: $("npcShopEyebrow"),
+  npcShopTitle: $("npcShopTitle"),
+  npcShopCash: $("npcShopCash"),
+  npcDialogue: $("npcDialogue"),
+  npcShopGrid: $("npcShopGrid"),
+  closeNpcShopBtn: $("closeNpcShopButton"),
+  questScreen: $("questScreen"),
+  questList: $("questList"),
+  closeQuestBtn: $("closeQuestButton")
 };
 
 const WORLD = { w: 3200, h: 2400 };
@@ -161,6 +175,87 @@ let interior = null;
 let outsidePosition = null;
 let nearbyInteraction = null;
 let buildingsSearched = 0;
+let cash = Number(localStorage.getItem("potaraZombieCash") || 100);
+let currentNpcShop = null;
+
+const QUESTS = [
+  {
+    id: "kill20",
+    title: "Clear the Streets",
+    icon: "🧟",
+    description: "Kill 20 zombies.",
+    type: "kills",
+    target: 20,
+    rewardCash: 80,
+    rewardItem: "ammo"
+  },
+  {
+    id: "search3",
+    title: "Urban Explorer",
+    icon: "🏢",
+    description: "Search 3 different buildings.",
+    type: "buildings",
+    target: 3,
+    rewardCash: 65,
+    rewardItem: "medkit"
+  },
+  {
+    id: "tank1",
+    title: "Heavy Target",
+    icon: "💀",
+    description: "Defeat 1 Tank zombie.",
+    type: "tankKills",
+    target: 1,
+    rewardCash: 100,
+    rewardItem: "armor"
+  },
+  {
+    id: "wave5",
+    title: "Last Until Dawn",
+    icon: "🌊",
+    description: "Reach Wave 5.",
+    type: "wave",
+    target: 5,
+    rewardCash: 120,
+    rewardItem: "ammo"
+  },
+  {
+    id: "findKey",
+    title: "The Lost Key",
+    icon: "🗝️",
+    description: "Find the City Key.",
+    type: "key",
+    target: 1,
+    rewardCash: 150,
+    rewardItem: "medkit"
+  },
+  {
+    id: "boss1",
+    title: "Mutant Hunter",
+    icon: "👹",
+    description: "Defeat 1 Mutant Boss.",
+    type: "bossKills",
+    target: 1,
+    rewardCash: 250,
+    rewardItem: "armor"
+  }
+];
+
+let questState = JSON.parse(
+  localStorage.getItem("potaraZombieQuestState") ||
+  JSON.stringify({
+    active: null,
+    completed: [],
+    progress: {
+      kills: 0,
+      buildings: 0,
+      tankKills: 0,
+      wave: 1,
+      key: 0,
+      bossKills: 0
+    }
+  })
+);
 
 const inventory = JSON.parse(
   localStorage.getItem("potaraZombieInventory") ||
@@ -222,6 +317,12 @@ const ITEM_DATA = {
     name: "CITY KEY",
     icon: "🗝️",
     description: "A mysterious key found inside the infected city.",
+    usable: false
+  },
+  grenade: {
+    name: "GRENADE",
+    icon: "💣",
+    description: "Explosive equipment reserved for a future combat update.",
     usable: false
   }
 };
@@ -312,6 +413,111 @@ function startLoader() {
 }
 addEventListener("load", () => setTimeout(startLoader, 250));
 
+
+const BUILDING_DATA = {
+  hospital: {
+    name: "HOSPITAL",
+    symbol: "H",
+    color: "#ff4c5f",
+    bg: "rgba(255,76,95,.16)"
+  },
+  police: {
+    name: "POLICE STATION",
+    symbol: "P",
+    color: "#4d8fff",
+    bg: "rgba(77,143,255,.16)"
+  },
+  weaponShop: {
+    name: "WEAPON SHOP",
+    symbol: "🔫",
+    color: "#ff9d42",
+    bg: "rgba(255,157,66,.16)"
+  },
+  generalStore: {
+    name: "GENERAL STORE",
+    symbol: "🛍",
+    color: "#ffe45c",
+    bg: "rgba(255,228,92,.15)"
+  },
+  safeHouse: {
+    name: "SAFE HOUSE",
+    symbol: "⌂",
+    color: "#57ff6d",
+    bg: "rgba(87,255,109,.15)"
+  },
+  gasStation: {
+    name: "GAS STATION",
+    symbol: "⛽",
+    color: "#ff6252",
+    bg: "rgba(255,98,82,.16)"
+  },
+  warehouse: {
+    name: "WAREHOUSE",
+    symbol: "▣",
+    color: "#aeb7b0",
+    bg: "rgba(174,183,176,.15)"
+  },
+  questCenter: {
+    name: "QUEST CENTER",
+    symbol: "!",
+    color: "#c997ff",
+    bg: "rgba(201,151,255,.17)"
+  },
+  house: {
+    name: "HOUSE",
+    symbol: "⌂",
+    color: "#7edc8a",
+    bg: "rgba(126,220,138,.14)"
+  }
+};
+
+const NPC_SHOPS = {
+  hospital: {
+    eyebrow: "FIELD MEDIC",
+    title: "MEDICAL",
+    subtitle: "SUPPLIES",
+    dialogue: "Patch yourself up before the next wave.",
+    items: [
+      { id: "bandage", name: "Bandage", icon: "🩹", price: 18, description: "Restores 20 health." },
+      { id: "medkit", name: "Medkit", icon: "🧰", price: 45, description: "Restores 50 health." },
+      { id: "food", name: "Food", icon: "🥫", price: 12, description: "Restores 10 health." }
+    ]
+  },
+  police: {
+    eyebrow: "POLICE QUARTERMASTER",
+    title: "ARMOR",
+    subtitle: "DEPOT",
+    dialogue: "Protection is cheaper than dying.",
+    items: [
+      { id: "armor", name: "Armor Plate", icon: "🛡️", price: 50, description: "Adds 25 armor." },
+      { id: "ammo", name: "Ammo Box", icon: "📦", price: 35, description: "Refills all magazines." },
+      { id: "bandage", name: "Emergency Bandage", icon: "🩹", price: 20, description: "Restores 20 health." }
+    ]
+  },
+  weaponShop: {
+    eyebrow: "WEAPON DEALER",
+    title: "BLACK",
+    subtitle: "ARMORY",
+    dialogue: "I sell firepower, not guarantees.",
+    items: [
+      { id: "ammo", name: "Ammo Box", icon: "📦", price: 30, description: "Refills weapon magazines." },
+      { id: "grenade", name: "Grenade", icon: "💣", price: 75, description: "Stored for a future combat update." },
+      { id: "armor", name: "Combat Plate", icon: "🛡️", price: 60, description: "Adds 25 armor." }
+    ]
+  },
+  generalStore: {
+    eyebrow: "SURVIVAL MERCHANT",
+    title: "GENERAL",
+    subtitle: "STORE",
+    dialogue: "Whatever survived the outbreak is for sale.",
+    items: [
+      { id: "food", name: "Food Can", icon: "🥫", price: 10, description: "Restores 10 health." },
+      { id: "bandage", name: "Bandage", icon: "🩹", price: 17, description: "Restores 20 health." },
+      { id: "ammo", name: "Ammo Box", icon: "📦", price: 38, description: "Refills all magazines." }
+    ]
+  }
+};
+
 /* World */
 function insideBuilding(x, y, pad = 0) {
   return buildings.some(b => x > b.x - pad && x < b.x + b.w + pad && y > b.y - pad && y < b.y + b.h + pad);
@@ -339,10 +545,20 @@ function createWorld() {
 
   buildings.forEach((building, index) => {
     building.id = index;
-    building.type =
-      index % 4 === 0 ? "hospital" :
-      index % 4 === 1 ? "house" :
-      index % 4 === 2 ? "store" : "police";
+    const buildingTypes = [
+      "hospital",
+      "police",
+      "weaponShop",
+      "generalStore",
+      "safeHouse",
+      "gasStation",
+      "warehouse",
+      "questCenter",
+      "house",
+      "hospital"
+    ];
+
+    building.type = buildingTypes[index % buildingTypes.length];
 
     building.doorX = building.x + building.w / 2;
     building.doorY = building.y + building.h + 18;
@@ -716,6 +932,221 @@ if (UI.weaponBtn) {
 }
 
 
+
+function saveQuestState() {
+  localStorage.setItem("potaraZombieQuestState", JSON.stringify(questState));
+}
+
+function saveCash() {
+  localStorage.setItem("potaraZombieCash", String(cash));
+}
+
+function getQuestById(id) {
+  return QUESTS.find(quest => quest.id === id);
+}
+
+function getQuestProgress(quest) {
+  return Math.min(
+    quest.target,
+    questState.progress[quest.type] || 0
+  );
+}
+
+function updateQuestTracker() {
+  const quest = getQuestById(questState.active);
+
+  if (!quest) {
+    UI.questTitle.textContent = "No active quest";
+    UI.questProgress.textContent = "Visit the purple ! Quest Center";
+    return;
+  }
+
+  const progress = getQuestProgress(quest);
+  UI.questTitle.textContent = quest.title;
+  UI.questProgress.textContent = `${progress} / ${quest.target}`;
+
+  if (progress >= quest.target) {
+    completeActiveQuest();
+  }
+}
+
+function acceptQuest(id) {
+  if (
+    questState.active ||
+    questState.completed.includes(id)
+  ) {
+    return;
+  }
+
+  questState.active = id;
+  saveQuestState();
+  updateQuestTracker();
+  renderQuestList();
+  beep(520, .12, "triangle", .04);
+}
+
+function completeActiveQuest() {
+  const quest = getQuestById(questState.active);
+  if (!quest) return;
+
+  cash += quest.rewardCash;
+  saveCash();
+
+  if (quest.rewardItem) {
+    addLoot(quest.rewardItem, 1);
+  }
+
+  questState.completed.push(quest.id);
+  questState.active = null;
+  saveQuestState();
+
+  const toast = document.createElement("div");
+  toast.className = "quest-complete-toast";
+  toast.textContent = `QUEST COMPLETE — +$${quest.rewardCash}`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 1400);
+
+  updateQuestTracker();
+  updateUI();
+  beep(880, .2, "triangle", .06);
+}
+
+function increaseQuestProgress(type, amount = 1) {
+  questState.progress[type] =
+    (questState.progress[type] || 0) + amount;
+
+  saveQuestState();
+  updateQuestTracker();
+}
+
+function renderQuestList() {
+  UI.questList.innerHTML = "";
+
+  QUESTS.forEach(quest => {
+    const card = document.createElement("article");
+    const active = questState.active === quest.id;
+    const completed = questState.completed.includes(quest.id);
+    const progress = getQuestProgress(quest);
+
+    card.className =
+      "quest-card" +
+      (active ? " active" : "") +
+      (completed ? " completed" : "");
+
+    card.innerHTML = `
+      <div class="quest-icon">${quest.icon}</div>
+      <h3>${quest.title}</h3>
+      <p>${quest.description}</p>
+      <div class="quest-meta">
+        <span>${progress}/${quest.target}</span>
+        <span>Reward: $${quest.rewardCash}</span>
+      </div>
+      <button ${active || completed || questState.active ? "disabled" : ""}>
+        ${
+          completed
+            ? "COMPLETED"
+            : active
+            ? "ACTIVE"
+            : questState.active
+            ? "FINISH CURRENT QUEST"
+            : "ACCEPT QUEST"
+        }
+      </button>
+    `;
+
+    const button = card.querySelector("button");
+    if (!button.disabled) {
+      button.addEventListener("click", () => acceptQuest(quest.id));
+    }
+
+    UI.questList.appendChild(card);
+  });
+}
+
+function openQuestCenter() {
+  paused = true;
+  unlockMouse();
+  renderQuestList();
+  UI.questScreen.classList.remove("hidden");
+}
+
+function closeQuestCenter() {
+  UI.questScreen.classList.add("hidden");
+  paused = false;
+  lastTime = performance.now();
+  raf = requestAnimationFrame(loop);
+
+  if (!isMobile()) {
+    setTimeout(lockMouse, 60);
+  }
+}
+
+UI.closeQuestBtn.addEventListener("click", closeQuestCenter);
+
+function openNpcShop(type) {
+  const shop = NPC_SHOPS[type];
+  if (!shop) return;
+
+  currentNpcShop = type;
+  paused = true;
+  unlockMouse();
+
+  UI.npcShopEyebrow.textContent = shop.eyebrow;
+  UI.npcShopTitle.innerHTML = `${shop.title} <span>${shop.subtitle}</span>`;
+  UI.npcDialogue.textContent = shop.dialogue;
+  UI.npcShopCash.textContent = cash;
+  UI.npcShopGrid.innerHTML = "";
+
+  shop.items.forEach(item => {
+    const card = document.createElement("article");
+    card.className = "npc-shop-item";
+    card.innerHTML = `
+      <div class="item-icon">${item.icon}</div>
+      <h3>${item.name}</h3>
+      <p>${item.description}</p>
+      <button ${cash < item.price ? "disabled" : ""}>
+        BUY — $${item.price}
+      </button>
+    `;
+
+    card.querySelector("button").addEventListener("click", () => {
+      buyNpcItem(item);
+    });
+
+    UI.npcShopGrid.appendChild(card);
+  });
+
+  UI.npcShop.classList.remove("hidden");
+}
+
+function buyNpcItem(item) {
+  if (cash < item.price) {
+    beep(120, .1, "square", .035);
+    return;
+  }
+
+  cash -= item.price;
+  saveCash();
+  addLoot(item.id, 1);
+  beep(720, .14, "triangle", .05);
+  openNpcShop(currentNpcShop);
+  updateUI();
+}
+
+function closeNpcShop() {
+  UI.npcShop.classList.add("hidden");
+  currentNpcShop = null;
+  paused = false;
+  lastTime = performance.now();
+  raf = requestAnimationFrame(loop);
+
+  if (!isMobile()) {
+    setTimeout(lockMouse, 60);
+  }
+}
+
+UI.closeNpcShopBtn.addEventListener("click", closeNpcShop);
+
 /* Inventory + interaction */
 UI.inventoryBtn.addEventListener("click", toggleInventory);
 UI.interactBtn.addEventListener("click", interact);
@@ -727,7 +1158,12 @@ function saveInventory() {
 }
 
 function toggleInventory() {
-  if (!running || UI.shop && !UI.shop.classList.contains("hidden")) return;
+  if (
+    !running ||
+    (UI.shop && !UI.shop.classList.contains("hidden")) ||
+    !UI.npcShop.classList.contains("hidden") ||
+    !UI.questScreen.classList.contains("hidden")
+  ) return;
 
   if (inventoryOpen) {
     closeInventory();
@@ -937,8 +1373,25 @@ function updateInteraction() {
     );
 
     if (distance < 85) {
+      const data = BUILDING_DATA[building.type];
+
+      if (NPC_SHOPS[building.type]) {
+        nearbyInteraction = {
+          type: "npcShop",
+          shopType: building.type
+        };
+        showInteraction(`TALK TO ${data.name}`);
+        return;
+      }
+
+      if (building.type === "questCenter") {
+        nearbyInteraction = { type: "questCenter" };
+        showInteraction("OPEN QUEST CENTER");
+        return;
+      }
+
       nearbyInteraction = { type: "building", building };
-      showInteraction(`ENTER ${building.type.toUpperCase()}`);
+      showInteraction(`ENTER ${data?.name || building.type.toUpperCase()}`);
       return;
     }
   }
@@ -960,6 +1413,10 @@ function interact() {
 
   if (nearbyInteraction.type === "building") {
     enterBuilding(nearbyInteraction.building);
+  } else if (nearbyInteraction.type === "npcShop") {
+    openNpcShop(nearbyInteraction.shopType);
+  } else if (nearbyInteraction.type === "questCenter") {
+    openQuestCenter();
   } else if (nearbyInteraction.type === "exit") {
     exitBuilding();
   } else if (nearbyInteraction.type === "crate") {
@@ -998,6 +1455,7 @@ function enterBuilding(building) {
   if (!building.searched) {
     building.searched = true;
     buildingsSearched++;
+    increaseQuestProgress("buildings", 1);
 
     const key = String(building.id);
     const oldState = buildingLootState[key] || {
@@ -1065,6 +1523,7 @@ function searchCrate(crate) {
 
     if (type === "key") {
       UI.missionText.textContent = "City Key found — survive the infected city";
+      increaseQuestProgress("key", 1);
     }
   }
 
@@ -1266,6 +1725,15 @@ function killZombie(index, z) {
   zombies.splice(index,1);
   kills++;
   waveKills++;
+  increaseQuestProgress("kills", 1);
+
+  if (z.type === "tank") {
+    increaseQuestProgress("tankKills", 1);
+  }
+
+  if (z.type === "boss") {
+    increaseQuestProgress("bossKills", 1);
+  }
   const reward =
     z.type === "boss" ? 1500 :
     z.type === "tank" ? 500 :
@@ -1543,7 +2011,7 @@ function draw() {
   drawRoads();
 
   const items = [];
-  for (const b of buildings) items.push({y:b.y+b.h,draw:()=>drawBuilding(b)});
+  for (const b of buildings) items.push({y:b.y+b.h,draw:()=>{drawBuilding(b);drawBuildingSign(b);}});
   for (const d of decor) items.push({y:d.y,draw:()=>drawDecor(d)});
   for (const p of pickups) items.push({y:p.y,draw:()=>drawPickup(p)});
   for (const z of zombies) items.push({y:z.y+z.r,draw:()=>drawZombie(z)});
@@ -1630,6 +2098,48 @@ function drawBuilding(b){
       ctx.fillStyle="rgba(5,8,6,.75)";ctx.fillRect(x,y,36,34);
     }
   }
+}
+
+
+function drawBuildingSign(building) {
+  if (!visible(building.x + building.w / 2, building.y, 500)) return;
+
+  const data = BUILDING_DATA[building.type];
+  if (!data) return;
+
+  const point = worldToScreen(
+    building.x + building.w / 2,
+    building.y - building.h3 - 22
+  );
+
+  ctx.save();
+
+  ctx.fillStyle = data.bg;
+  ctx.strokeStyle = data.color;
+  ctx.lineWidth = 2;
+
+  const width = Math.max(42, data.name.length * 7 + 34);
+  ctx.beginPath();
+  ctx.roundRect(
+    point.x - width / 2,
+    point.y - 17,
+    width,
+    34,
+    8
+  );
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = data.color;
+  ctx.font = '900 14px "Orbitron"';
+  ctx.textAlign = "center";
+  ctx.fillText(data.symbol, point.x - width / 2 + 18, point.y + 5);
+
+  ctx.fillStyle = "#f3f7f4";
+  ctx.font = '800 8px "Orbitron"';
+  ctx.fillText(data.name, point.x + 10, point.y + 4);
+
+  ctx.restore();
 }
 
 function drawDecor(d){
@@ -1901,6 +2411,9 @@ function beginWaveBreak() {
 
 function continueToNextWave() {
   wave++;
+  questState.progress.wave = Math.max(questState.progress.wave || 1, wave);
+  saveQuestState();
+  updateQuestTracker();
   waveKills = 0;
   waveCoins = 0;
   nextWaveKillTarget = 12 + Math.floor(wave * 1.5);
@@ -2176,6 +2689,8 @@ function updateUI(){
   UI.ammoText.textContent = ammo;
   UI.reserveAmmoText.textContent = "/ ∞";
   UI.coins.textContent = coins;
+  UI.cash.textContent = cash;
+  UI.npcShopCash.textContent = cash;
   if (UI.shopCoins) UI.shopCoins.textContent = coins;
   UI.kills.textContent=kills;
   UI.score.textContent=score;
@@ -2224,6 +2739,7 @@ function loop(now){
 
 createWorld();
 resize();
+updateQuestTracker();
 updateUI();
 draw();
 
